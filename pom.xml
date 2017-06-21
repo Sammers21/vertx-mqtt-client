@@ -26,6 +26,7 @@
 
   <properties>
     <stack.version>3.4.2-SNAPSHOT</stack.version>
+    <junit.version>4.12</junit.version>
   </properties>
 
   <dependencyManagement>
@@ -48,7 +49,48 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-mqtt</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-mqtt-server</artifactId>
+      <version>${stack.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-codegen</artifactId>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-docgen</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Testing -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-unit</artifactId>
+      <version>${stack.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
+
+  <repositories>
+    <repository>
+      <id>oss.sonatype.org-snapshot</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </repository>
+  </repositories>
 
   <licenses>
     <license>

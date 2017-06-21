@@ -1,0 +1,3 @@
+= Vert.x MQTT client
+
+include::index.adoc[]
