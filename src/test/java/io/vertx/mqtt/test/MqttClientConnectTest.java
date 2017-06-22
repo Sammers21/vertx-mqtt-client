@@ -13,7 +13,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
-public class MqttClientConnectTest extends MqttClientBaseTest {
+public class MqttClientConnectTest {
 
   @Test
   public void simpleConnectDisconnect(TestContext context) throws InterruptedException {

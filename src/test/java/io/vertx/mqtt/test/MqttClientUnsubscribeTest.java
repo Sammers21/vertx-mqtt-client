@@ -15,7 +15,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
-public class MqttClientUnsubscribeTest extends MqttClientBaseTest {
+public class MqttClientUnsubscribeTest {
 
   @Test
   public void unsubscribeQoS0(TestContext context) throws InterruptedException {

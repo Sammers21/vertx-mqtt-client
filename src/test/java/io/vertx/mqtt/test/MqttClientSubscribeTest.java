@@ -16,7 +16,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
-public class MqttClientSubscribeTest extends MqttClientBaseTest {
+public class MqttClientSubscribeTest {
 
   @Test
   @Ignore

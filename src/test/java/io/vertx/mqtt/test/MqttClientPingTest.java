@@ -14,7 +14,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
-public class MqttClientPingTest extends MqttClientBaseTest {
+public class MqttClientPingTest  {
 
   @Test
   public void simplePing(TestContext context) throws InterruptedException {
