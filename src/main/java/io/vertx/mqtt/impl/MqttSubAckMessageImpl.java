@@ -1,34 +1,33 @@
 package io.vertx.mqtt.impl;
 
-import io.vertx.codegen.annotations.DataObject;
-import io.vertx.core.json.JsonObject;
 import io.vertx.mqtt.MqttSubAckMessage;
 
 import java.util.List;
 
-@DataObject
+/**
+ * Represents an MQTT SUBACK message
+ */
 public class MqttSubAckMessageImpl implements MqttSubAckMessage {
 
-  private List<Integer> grantedQoSLevels;
-  private int packetId;
+  private final int messageId;
+  private final List<Integer> grantedQoSLevels;
 
-  public MqttSubAckMessageImpl(List<Integer> grantedQoSLevels, int packetId) {
+  /**
+   * Constructor
+   *
+   * @param messageId message identifier
+   * @param grantedQoSLevels  list of granted QoS levels
+   */
+  public MqttSubAckMessageImpl(int messageId, List<Integer> grantedQoSLevels) {
+    this.messageId = messageId;
     this.grantedQoSLevels = grantedQoSLevels;
-    this.packetId = packetId;
   }
 
-  public MqttSubAckMessageImpl(JsonObject json){
-    //TODO
+  public int messageId() {
+    return this.messageId;
   }
 
   public List<Integer> grantedQoSLevels() {
     return grantedQoSLevels;
   }
-
-
-  public int packetId() {
-    return packetId;
-  }
-
-
 }

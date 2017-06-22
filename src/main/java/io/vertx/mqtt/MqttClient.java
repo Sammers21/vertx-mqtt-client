@@ -17,22 +17,6 @@ import java.util.Map;
 public interface MqttClient {
 
   /**
-   * This method returns current status of connection
-   * The status is an Integer that could have one of these values:
-   * -  value: -1, Disconnected.Initial state of client when you have not tried to connect
-   * or after calling of {@link #disconnect()} method
-   * -  value: 0, description: Connected.Connection accepted
-   * -  value: 1, description: Disconnected.Connection Refused, unacceptable protocol version
-   * -  value: 2, description: Disconnected.The Client identifier is correct UTF-8 but not allowed by the Server
-   * -  value: 3, description: Disconnected.The Network Connection has been made but the MQTT service is unavailable
-   * -  value: 4, description: Disconnected.The data in the user name or password is malformed
-   * -  value: 5, description: Disconnected.The Client is not authorized to connect
-   *
-   * @return current status
-   */
-  int connectionStatus();
-
-  /**
    * Connects to an MQTT server using options provided through the constructor
    */
   @Fluent
@@ -45,14 +29,13 @@ public interface MqttClient {
    * @param connectHandler handler called when the asynchronous connect call ends
    */
   @Fluent
-  MqttClient connect(Handler<AsyncResult<MqttClient>> connectHandler);
+  MqttClient connect(Handler<AsyncResult<MqttConnAckMessage>> connectHandler);
 
   /**
    * Disconnects from the server
    */
   @Fluent
   MqttClient disconnect();
-
 
   /**
    * Disconnects from the server calling disconnectHandler after disconnection
@@ -80,15 +63,15 @@ public interface MqttClient {
    * @param publishCompleteHandler handler to call. Integer inside is a packetId
    */
   @Fluent
-  MqttClient publishComplete(Handler<Integer> publishCompleteHandler);
+  MqttClient publishCompleteHandler(Handler<Integer> publishCompleteHandler);
 
   /**
    * Sets handler which will be called each time server publish something to client
    *
-   * @param publishReceivedHandler handler to call
+   * @param publishHandler handler to call
    */
   @Fluent
-  MqttClient publishReceived(Handler<MqttPublishMessage> publishReceivedHandler);
+  MqttClient publishHandler(Handler<MqttPublishMessage> publishHandler);
 
   /**
    * Sets handler which will be called after SUBACK packet receiving
@@ -96,7 +79,7 @@ public interface MqttClient {
    * @param subscribeCompleteHandler handler to call. List inside is a granted QoS array
    */
   @Fluent
-  MqttClient subscribeComplete(Handler<MqttSubAckMessage> subscribeCompleteHandler);
+  MqttClient subscribeCompleteHandler(Handler<MqttSubAckMessage> subscribeCompleteHandler);
 
   /**
    * Subscribes to the topic
@@ -130,17 +113,19 @@ public interface MqttClient {
    * Subscribes to the topic and adds a handler which will be called each time you have a new message on a topic
    *
    * @param topics                topics you subscribe on
-   * @param subscribeSentComplete handler which will call after SUBSCRIBE packet sending
+   * @param subscribeSentHandler  handler which will call after SUBSCRIBE packet sending
    */
   @Fluent
-  MqttClient subscribe(Map<String, Integer> topics, Handler<AsyncResult<Integer>> subscribeSentComplete);
+  MqttClient subscribe(Map<String, Integer> topics, Handler<AsyncResult<Integer>> subscribeSentHandler);
 
 
   /**
+   * Sets handler which will be called after UNSUBACK packet receiving
+   *
    * @param unsubscribeCompleteHandler handler to call. Integer inside is a packetId
    */
   @Fluent
-  MqttClient unsubscribeComplete(Handler<Integer> unsubscribeCompleteHandler);
+  MqttClient unsubscribeCompleteHandler(Handler<Integer> unsubscribeCompleteHandler);
 
   /**
    * Unsubscribe from receiving messages on given topic
@@ -150,14 +135,27 @@ public interface MqttClient {
   @Fluent
   MqttClient unsubscribe(String topic);
 
+  /**
+   * Unsubscribe from receiving messages on given topic
+   *
+   * @param topic Topic you wanna unsubscribe from
+   * @param unsubscribeSentHandler  handler which will call after UNSUBSCRIBE packet sending
+   */
+  @Fluent
+  MqttClient unsubscribe(String topic, Handler<AsyncResult<Integer>> unsubscribeSentHandler);
+
+  /**
+   * Sets handler which will be called after PINGRESP packet receiving
+   *
+   * @param pingResponseHandler handler to call
+   */
+  @Fluent
+  MqttClient pingResponseHandler(Handler<Void> pingResponseHandler);
 
   /**
    * This method is needed by the client in order to avoid server closes the
    * connection due to the keep alive timeout if client has no messages to send
-   *
-   * @param pingResultHandler handler with result
    */
   @Fluent
-  MqttClient ping(Handler<AsyncResult<Void>> pingResultHandler);
-
+  MqttClient ping();
 }

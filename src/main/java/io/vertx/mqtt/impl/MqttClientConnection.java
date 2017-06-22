@@ -3,8 +3,7 @@ package io.vertx.mqtt.impl;
 
 import io.netty.channel.Channel;
 import io.netty.handler.codec.DecoderResult;
-import io.netty.handler.codec.mqtt.*;
-import io.vertx.core.Future;
+import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
 import io.vertx.core.impl.ContextImpl;
 import io.vertx.core.impl.VertxInternal;
 import io.vertx.core.net.impl.ConnectionBase;
@@ -12,15 +11,15 @@ import io.vertx.core.net.impl.SSLHelper;
 import io.vertx.core.spi.metrics.NetworkMetrics;
 import io.vertx.core.spi.metrics.TCPMetrics;
 import io.vertx.mqtt.MqttClientOptions;
+import io.vertx.mqtt.MqttConnAckMessage;
+import io.vertx.mqtt.MqttSubAckMessage;
 import io.vertx.mqtt.messages.MqttPublishMessage;
-import io.vertx.mqtt.messages.impl.MqttPublishMessageImpl;
 
 public class MqttClientConnection extends ConnectionBase {
 
   private TCPMetrics metrics;
   private MqttClientOptions options;
   private MqttClientImpl client;
-  private io.netty.handler.codec.mqtt.MqttPublishMessage lastMessage;
 
   MqttClientConnection(VertxInternal vertx, Channel channel, ContextImpl context, TCPMetrics metrics,
                        MqttClientOptions options, MqttClientImpl currentState) {
@@ -37,17 +36,11 @@ public class MqttClientConnection extends ConnectionBase {
 
   @Override
   public NetworkMetrics metrics() {
-    // what to do...
-    // probably value must be received via constructor?
-
-    return metrics; //null
+    return metrics;
   }
 
   @Override
   protected void handleInterestedOpsChanged() {
-    //#TODO implementation here
-    System.out.println("handle options");
-    // what to do...
   }
 
   /**
@@ -55,11 +48,13 @@ public class MqttClientConnection extends ConnectionBase {
    *
    * @param msg Incoming Packet
    */
-  void handleMessage(Object msg) {
+  synchronized void handleMessage(Object msg) {
 
-    if (msg instanceof MqttMessage) {
+    // handling directly native Netty MQTT messages because we don't need to
+    // expose them at higher level (so no need for polyglotization)
+    if (msg instanceof io.netty.handler.codec.mqtt.MqttMessage) {
 
-      MqttMessage mqttMessage = (MqttMessage) msg;
+      io.netty.handler.codec.mqtt.MqttMessage mqttMessage = (io.netty.handler.codec.mqtt.MqttMessage) msg;
 
       DecoderResult result = mqttMessage.decoderResult();
       if (result.isFailure()) {
@@ -70,125 +65,138 @@ public class MqttClientConnection extends ConnectionBase {
         channel.pipeline().fireExceptionCaught(new Exception("Unfinished message"));
         return;
       }
-      if (result.isSuccess() && result.isFinished()) {
-        switch (mqttMessage.fixedHeader().messageType()) {
-          case CONNACK: handleConnack((MqttConnAckMessage) mqttMessage); break;
-          case PUBLISH: handlePublish((io.netty.handler.codec.mqtt.MqttPublishMessage) mqttMessage); break;
-          case PUBACK: handlePuback((MqttPubAckMessage) mqttMessage); break;
-          case PUBREC: handlePubrec(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId()); break;
-          case PUBREL: handlePubrel(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId()); break;
-          case PUBCOMP: handlePubcomp(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId()); break;
-          case SUBACK: handleSuback((MqttSubAckMessage) mqttMessage); break;
-          case UNSUBACK: handleUnsuback((MqttUnsubAckMessage) mqttMessage); break;
-          case PINGRESP: handlePingresp(); break;
-          default: {
-            // TODO handle another packets
-          }
+
+      switch (mqttMessage.fixedHeader().messageType()) {
+
+        case PUBACK:
+          handlePuback(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId());
           break;
 
-        }
+        case PUBREC:
+          handlePubrec(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId());
+          break;
+
+        case PUBREL:
+          handlePubrel(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId());
+          break;
+
+        case PUBCOMP:
+          handlePubcomp(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId());
+          break;
+
+        case UNSUBACK:
+          handleUnsuback(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId());
+          break;
+
+        case PINGRESP:
+          handlePingresp();
+          break;
+
+        default:
+
+          this.channel.pipeline().fireExceptionCaught(new Exception("Wrong message type " + msg.getClass().getName()));
+          break;
+      }
+
+      // handling mapped Vert.x MQTT messages (from Netty ones) because they'll be provided
+      // to the higher layer (so need for ployglotization)
+    } else {
+
+      if (msg instanceof MqttConnAckMessage) {
+
+        handleConnack((MqttConnAckMessage) msg);
+
+      } else if (msg instanceof MqttSubAckMessage) {
+
+        handleSuback((MqttSubAckMessage) msg);
+
+      } else if (msg instanceof MqttPublishMessage) {
+
+        handlePublish((MqttPublishMessage) msg);
+
+      } else {
+
+        this.channel.pipeline().fireExceptionCaught(new Exception("Wrong message type"));
       }
     }
   }
 
-  private void handlePingresp() {
-    if (client.pingResultHandler != null) {
-      client.pingResultHandler.handle(Future.succeededFuture());
-    }
+  /**
+   * Used for calling the pingresp handler when the server replies to the ping
+   */
+  synchronized private void handlePingresp() {
+    this.client.handlePingresp();
   }
 
-
-  private void handleUnsuback(MqttUnsubAckMessage mqttMessage) {
-    if (client.unsubscribeCompleteHandler != null)
-      client.unsubscribeCompleteHandler.handle(mqttMessage.variableHeader().messageId());
-
+  /**
+   * Used for calling the unsuback handler when the server acks an unsubscribe
+   *
+   * @param unsubackMessageId identifier of the subscribe acknowledged by the server
+   */
+  synchronized private void handleUnsuback(int unsubackMessageId) {
+    this.client.handleUnsuback(unsubackMessageId);
   }
 
-  private void handleSuback(MqttSubAckMessage message) {
-    if (client.subscribeCompleteHandler != null)
-      client.subscribeCompleteHandler.handle(
-        new MqttSubAckMessageImpl(message.payload().grantedQoSLevels(), message.variableHeader().messageId())
-      );
+  /**
+   * Used for calling the suback handler when the server acknoweldge subscribe to topics
+   *
+   * @param msg message with suback information
+   */
+  synchronized private void handleSuback(MqttSubAckMessage msg) {
+    this.client.handleSuback(msg);
   }
 
-  private void handlePubcomp(int publishPacketId) {
-    if (client.publishCompleteHandler != null)
-      client.publishCompleteHandler.handle(publishPacketId);
+  /**
+   * Used for calling the pubcomp handler when the server client acknowledge a QoS 2 message with pubcomp
+   *
+   * @param pubcompMessageId identifier of the message acknowledged by the server
+   */
+  synchronized private void handlePubcomp(int pubcompMessageId) {
+    this.client.handlePubcomp(pubcompMessageId);
   }
 
-  private void handlePuback(MqttPubAckMessage mqttMessage) {
-    if (client.publishCompleteHandler != null)
-      client.publishCompleteHandler.handle(mqttMessage.variableHeader().messageId());
-
+  /**
+   * Used for calling the puback handler when the server acknowledge a QoS 1 message with puback
+   *
+   * @param pubackMessageId identifier of the message acknowledged by the server
+   */
+  synchronized private void handlePuback(int pubackMessageId) {
+    this.client.handlePuback(pubackMessageId);
   }
 
-  private void handlePubrel(int publishPacketId) {
-    client.pubcomp(publishPacketId);
-    handle_immediately(lastMessage);
+  /**
+   * Used for calling the pubrel handler when the server acknowledge a QoS 2 message with pubrel
+   *
+   * @param pubrelMessageId identifier of the message acknowledged by the server
+   */
+  synchronized private void handlePubrel(int pubrelMessageId) {
+    this.client.handlePubrel(pubrelMessageId);
   }
 
-  private void handlePublish(io.netty.handler.codec.mqtt.MqttPublishMessage mqttMessage) {
-    lastMessage = mqttMessage;
-    if (mqttMessage.fixedHeader().qosLevel().value() == 0) {
-      handle_immediately(mqttMessage);
-    } else if (mqttMessage.fixedHeader().qosLevel().value() == 1) {
-      client.puback(mqttMessage.fixedHeader().messageType().value());
-      handle_immediately(mqttMessage);
-    } else if (mqttMessage.fixedHeader().qosLevel().value() == 2) {
-      client.pubrec(mqttMessage.fixedHeader().messageType().value());
-    }
+  /**
+   * Used for calling the publish handler when the server publishes a message
+   *
+   * @param msg published message
+   */
+  synchronized private void handlePublish(MqttPublishMessage msg) {
+    this.client.handlePublish(msg);
   }
 
-  private void handle_immediately(io.netty.handler.codec.mqtt.MqttPublishMessage mqttMessage) {
-
-    MqttPublishMessage message =
-      new MqttPublishMessageImpl(
-        mqttMessage.fixedHeader().messageType().value(),
-        mqttMessage.fixedHeader().qosLevel(),
-        mqttMessage.fixedHeader().isDup(),
-        mqttMessage.fixedHeader().isRetain(),
-        mqttMessage.variableHeader().topicName(),
-        mqttMessage.payload().duplicate());
-
-
-    if (client.publishReceivedHandler != null) {
-      client.publishReceivedHandler.handle(message);
-    }
+  /**
+   * Used for sending the pubrel when a pubrec is received from the server
+   *
+   * @param pubrecMessageId identifier of the message acknowledged by server
+   */
+  synchronized private void handlePubrec(int pubrecMessageId) {
+    this.client.handlePubrec(pubrecMessageId);
   }
 
-  private void handlePubrec(int publishPacketId) {
-    MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, false, MqttQoS.AT_LEAST_ONCE, false, 0);
-    MqttMessageIdVariableHeader variableHeader = MqttMessageIdVariableHeader.from(publishPacketId);
-    MqttMessage pubrel = MqttMessageFactory.newMessage(fixedHeader, variableHeader, null);
-    this.writeToChannel(pubrel);
-  }
-
-  private void handleConnack(MqttConnAckMessage mqttMessage) {
-
-    MqttConnectReturnCode code = mqttMessage.variableHeader().connectReturnCode();
-
-    final String warnMessage;
-    if (MqttConnectReturnCode.CONNECTION_ACCEPTED == code) {
-      warnMessage = "code: 0 Connection accepted";
-    } else if (code == MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION) {
-      warnMessage = "code: 1 Connection Refused, unacceptable protocol version";
-    } else if (code == MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED) {
-      warnMessage = "code: 2 The Client identifier is correct UTF-8 but not allowed by the Server";
-    } else if (code == MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE) {
-      warnMessage = "code: 3 The Network Connection has been made but the MQTT service is unavailable";
-    } else if (code == MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD) {
-      warnMessage = "code: 4 The data in the user name or password is malformed";
-    } else if (code == MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED) {
-      warnMessage = "code: 5  The Client is not authorized to connect";
-    } else {
-      warnMessage = "code: " + code.byteValue();
-    }
-
-    if (code.byteValue() == 0) {
-      client.callHandlerSuccess(client.connectHandler);
-    } else {
-      client.callHandleFail(client.connectHandler, warnMessage);
-    }
-    client.connectionStatus = code.byteValue();
+  /**
+   * Used for calling the connect handler when the server replies to the request
+   *
+   * @param msg  connection response message
+   */
+  synchronized private void handleConnack(MqttConnAckMessage msg) {
+    this.client.handleConnack(msg);
   }
 }

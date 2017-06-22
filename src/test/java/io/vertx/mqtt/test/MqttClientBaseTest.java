@@ -1,7 +1,7 @@
-package io.vertx.mqtt;
-
+package io.vertx.mqtt.test;
 
 import io.vertx.core.Vertx;
+import io.vertx.mqtt.MqttServer;
 import org.junit.After;
 import org.junit.Before;
 
@@ -12,8 +12,7 @@ import java.util.Set;
 /**
  * Base class for MQTT client unit tests
  */
-public class MqttClientTestBase {
-
+public class MqttClientBaseTest {
 
   MqttServer server;
   Set<String> topics = new HashSet<>();

@@ -1,4 +1,4 @@
-package io.vertx.mqtt;
+package io.vertx.mqtt.test;
 
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.vertx.core.Vertx;
@@ -6,6 +6,8 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.mqtt.MqttClient;
+import io.vertx.mqtt.MqttClientOptions;
 import io.vertx.mqtt.impl.MqttClientImpl;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -13,30 +15,28 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
-public class MqttClientUnsubscribeTest extends MqttClientTestBase {
-
+public class MqttClientUnsubscribeTest extends MqttClientBaseTest {
 
   @Test
-  public void subscribe_qos_0(TestContext context) throws InterruptedException {
+  public void unsubscribeQoS0(TestContext context) throws InterruptedException {
     Async async = context.async(3);
-    new MqttClientImpl(Vertx.vertx(), new MqttClientOptions())
-      .publishReceived(s -> async.countDown())
-      .unsubscribeComplete(s -> async.countDown())
+    MqttClient client = new MqttClientImpl(Vertx.vertx(), new MqttClientOptions())
+      .publishHandler(s -> async.countDown())
+      .unsubscribeCompleteHandler(s -> async.countDown());
       //CONNECT
-      .connect(ar -> {
+      client.connect(ar -> {
         assertTrue(ar.succeeded());
-        ar.result().subscribe("/hello", 2);
-        ar.result().publish(
+        client.subscribe("/hello", 0);
+        client.publish(
           "/hello",
           Buffer.buffer("hello".getBytes()),
           MqttQoS.AT_MOST_ONCE,
           false,
           false
         );
-        ar.result().unsubscribe("/topic");
+        client.unsubscribe("/topic");
         async.countDown();
-      })
-    ;
+      });
 
     async.await();
   }

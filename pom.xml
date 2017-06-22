@@ -80,7 +80,6 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-unit</artifactId>
-      <version>${stack.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
