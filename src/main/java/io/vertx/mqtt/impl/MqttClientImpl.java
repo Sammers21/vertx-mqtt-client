@@ -49,7 +49,7 @@ import static io.netty.handler.codec.mqtt.MqttQoS.*;
 
 
 /**
- * probably {@link io.vertx.core.net.impl.NetClientImpl} is an example of how it can be implemented ?
+ * MQTT client implementation
  */
 public class MqttClientImpl extends NetClientBase<MqttClientConnection> implements MqttClient {
 
@@ -83,6 +83,12 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   // counter for the message identifier
   private int messageIdCounter;
 
+  /**
+   * Constructor
+   *
+   * @param vertx Vert.x instance
+   * @param options MQTT client options
+   */
   public MqttClientImpl(Vertx vertx, MqttClientOptions options) {
     super((VertxInternal) vertx, options, true);
     this.options = options;
@@ -104,6 +110,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
 
     this.doConnect(options.getPort(), options.getHost(), options.getHost(), done -> {
 
+      // the TCP connection fails
       if (done.failed()) {
 
         if (connectHandler != null) {
@@ -519,9 +526,8 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   }
 
   public MqttClientImpl write(io.netty.handler.codec.mqtt.MqttMessage mqttMessage) {
+
     synchronized (this.connection) {
-      // TODO : add check closed
-      // this.checkClosed();
       this.connection.writeToChannel(mqttMessage);
       return this;
     }

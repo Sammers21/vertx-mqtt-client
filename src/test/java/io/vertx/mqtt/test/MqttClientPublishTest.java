@@ -9,7 +9,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.mqtt.MqttClient;
 import io.vertx.mqtt.MqttClientOptions;
-import io.vertx.mqtt.impl.MqttClientImpl;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,7 +22,7 @@ public class MqttClientPublishTest {
   @Ignore
   public void publishQoS2(TestContext context) throws InterruptedException {
     Async async = context.async();
-    MqttClient client = new MqttClientImpl(Vertx.vertx(), new MqttClientOptions())
+    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions())
       .publishCompleteHandler(comp -> {
         async.countDown();
       });
@@ -49,7 +48,7 @@ public class MqttClientPublishTest {
   @Test
   public void publishQoS1(TestContext context) throws InterruptedException {
     Async async = context.async();
-    MqttClient client = new MqttClientImpl(Vertx.vertx(), new MqttClientOptions())
+    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions())
       .publishCompleteHandler(comp -> {
         async.countDown();
       });

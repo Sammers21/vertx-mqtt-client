@@ -8,7 +8,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.mqtt.MqttClient;
 import io.vertx.mqtt.MqttClientOptions;
-import io.vertx.mqtt.impl.MqttClientImpl;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -20,7 +19,7 @@ public class MqttClientUnsubscribeTest {
   @Test
   public void unsubscribeQoS0(TestContext context) throws InterruptedException {
     Async async = context.async(3);
-    MqttClient client = new MqttClientImpl(Vertx.vertx(), new MqttClientOptions())
+    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions())
       .publishHandler(s -> async.countDown())
       .unsubscribeCompleteHandler(s -> async.countDown());
       //CONNECT

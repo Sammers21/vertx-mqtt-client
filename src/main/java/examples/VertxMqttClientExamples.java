@@ -20,7 +20,7 @@ public class VertxMqttClientExamples {
       .setHost("iot.eclipse.org")
       .setPort(1883);
 
-    MqttClient client = new MqttClientImpl(vertx, options);
+    MqttClient client = MqttClient.create(vertx, options);
 
     client.connect(s -> client.disconnect());
   }

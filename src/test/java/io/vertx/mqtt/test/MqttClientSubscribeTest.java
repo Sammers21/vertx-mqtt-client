@@ -8,7 +8,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.mqtt.MqttClient;
 import io.vertx.mqtt.MqttClientOptions;
-import io.vertx.mqtt.impl.MqttClientImpl;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -22,7 +21,7 @@ public class MqttClientSubscribeTest {
   @Ignore
   public void subscribeQos2(TestContext context) throws InterruptedException {
     Async async = context.async();
-    MqttClient client = new MqttClientImpl(Vertx.vertx(), new MqttClientOptions())
+    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions())
       .publishHandler(s -> async.countDown());
     //CONNECT
     client.connect(ar -> {
@@ -43,7 +42,7 @@ public class MqttClientSubscribeTest {
   @Test
   public void subscribeQos1(TestContext context) throws InterruptedException {
     Async async = context.async();
-    MqttClient client = new MqttClientImpl(Vertx.vertx(), new MqttClientOptions())
+    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions())
       .publishHandler(s -> async.countDown());
     //CONNECT
     client.connect(ar -> {
@@ -66,7 +65,7 @@ public class MqttClientSubscribeTest {
   @Test
   public void subscribeQoS0(TestContext context) throws InterruptedException {
     Async async = context.async();
-    MqttClient client = new MqttClientImpl(Vertx.vertx(), new MqttClientOptions())
+    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions())
       .publishHandler(s -> async.countDown());
     //CONNECT
     client.connect(ar -> {

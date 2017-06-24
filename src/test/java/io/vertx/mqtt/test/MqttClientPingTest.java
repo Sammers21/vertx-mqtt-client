@@ -7,7 +7,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.mqtt.MqttClient;
 import io.vertx.mqtt.MqttClientOptions;
-import io.vertx.mqtt.impl.MqttClientImpl;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -20,7 +19,7 @@ public class MqttClientPingTest  {
   public void simplePing(TestContext context) throws InterruptedException {
     Async async = context.async();
 
-    MqttClient client = new MqttClientImpl(Vertx.vertx(), new MqttClientOptions());
+    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
     client.connect(c -> {
       assertTrue(c.succeeded());
       client.pingResponseHandler(v ->{

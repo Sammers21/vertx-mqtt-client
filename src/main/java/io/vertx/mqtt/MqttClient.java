@@ -5,7 +5,9 @@ import io.vertx.codegen.annotations.Fluent;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.mqtt.impl.MqttClientImpl;
 import io.vertx.mqtt.messages.MqttPublishMessage;
 
 import java.util.Map;
@@ -15,6 +17,27 @@ import java.util.Map;
  */
 @VertxGen
 public interface MqttClient {
+
+  /**
+   * Return an MQTT client instance
+   *
+   * @param vertx Vert.x instance
+   * @param options MQTT client options
+   * @return  MQTT client instance
+   */
+  static MqttClient create(Vertx vertx, MqttClientOptions options) {
+    return new MqttClientImpl(vertx, options);
+  }
+
+  /**
+   * Return an MQTT client instance using the default options
+   *
+   * @param vertx Vert.x instance
+   * @return  MQTT client instance
+   */
+  static MqttClient create(Vertx vertx) {
+    return new MqttClientImpl(vertx, new MqttClientOptions());
+  }
 
   /**
    * Connects to an MQTT server using options provided through the constructor
