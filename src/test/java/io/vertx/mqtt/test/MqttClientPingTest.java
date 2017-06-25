@@ -15,17 +15,59 @@ import static org.junit.Assert.assertTrue;
 @RunWith(VertxUnitRunner.class)
 public class MqttClientPingTest  {
 
-  @Test
-  public void simplePing(TestContext context) throws InterruptedException {
-    Async async = context.async();
+  private int count = 0;
 
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+  @Test
+  public void manualPing(TestContext context) throws InterruptedException {
+
+    Vertx vertx = Vertx.vertx();
+
+    Async async = context.async();
+    MqttClientOptions options = new MqttClientOptions();
+    options.setAutoKeepAlive(false);
+
+    count = 0;
+    MqttClient client = MqttClient.create(vertx, options);
     client.connect(c -> {
       assertTrue(c.succeeded());
       client.pingResponseHandler(v ->{
-        async.countDown();
+
+        count++;
+        if (count == 3) {
+          client.disconnect();
+          async.countDown();
+        }
       });
-      client.ping();
+
+      vertx.setPeriodic(5000, t ->{
+        client.ping();
+      });
+
+    });
+
+    async.await();
+  }
+
+  @Test
+  public void autoPing(TestContext context) throws InterruptedException {
+
+    Async async = context.async();
+    MqttClientOptions options = new MqttClientOptions();
+    options.setKeepAliveTimeSeconds(5);
+
+    count = 0;
+    MqttClient client = MqttClient.create(Vertx.vertx(), options);
+    client.connect(c -> {
+      assertTrue(c.succeeded());
+      client.pingResponseHandler(v ->{
+
+        count++;
+        if (count == 3) {
+          client.disconnect();
+          async.countDown();
+        }
+      });
+
     });
 
     async.await();

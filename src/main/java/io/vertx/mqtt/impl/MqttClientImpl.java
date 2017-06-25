@@ -4,6 +4,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.DecoderResult;
 import io.netty.handler.codec.mqtt.MqttConnectPayload;
@@ -20,6 +22,9 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.handler.codec.mqtt.MqttSubscribePayload;
 import io.netty.handler.codec.mqtt.MqttTopicSubscription;
 import io.netty.handler.codec.mqtt.MqttUnsubscribePayload;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -460,6 +465,27 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
     // add into pipeline netty's (en/de)coder
     pipeline.addLast("mqttEncoder", MqttEncoder.INSTANCE);
     pipeline.addLast("mqttDecoder", new MqttDecoder());
+
+    if (this.options.isAutoKeepAlive() &&
+      this.options.getKeepAliveTimeSeconds() != 0) {
+
+      pipeline.addLast("idle",
+        new IdleStateHandler(0, this.options.getKeepAliveTimeSeconds(), 0));
+      pipeline.addLast("keepAliveHandler", new ChannelDuplexHandler() {
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+
+          if (evt instanceof IdleStateEvent) {
+            IdleStateEvent e = (IdleStateEvent) evt;
+            if (e.state() == IdleState.WRITER_IDLE) {
+              ping();
+            }
+          }
+        }
+
+      });
+    }
   }
 
   @Override

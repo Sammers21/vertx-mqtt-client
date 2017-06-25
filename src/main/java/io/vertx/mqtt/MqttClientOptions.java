@@ -33,6 +33,7 @@ public class MqttClientOptions extends NetClientOptions {
   private boolean willRetain = DEFAULT_WILL_RETAIN;
   private int keepAliveTimeSeconds = DEFAULT_KEEP_ALIVE_TIME_SECONDS;
   private boolean portChangedByUser;
+  private boolean isAutoKeepAlive = true;
 
 
   /**
@@ -168,6 +169,25 @@ public class MqttClientOptions extends NetClientOptions {
 
   public boolean isPortChangedByUser() {
     return portChangedByUser;
+  }
+
+  /**
+   * Set if the MQTT client mush handle PINGREQ automatically
+   * (default is true)
+   *
+   * @param isAutoKeepAlive ping request handled automatically
+   * @return  current options instance
+   */
+  public MqttClientOptions setAutoKeepAlive(boolean isAutoKeepAlive) {
+    this.isAutoKeepAlive = isAutoKeepAlive;
+    return this;
+  }
+
+  /**
+   * @return if the PINGREQ is handled automatically
+   */
+  public boolean isAutoKeepAlive() {
+    return this.isAutoKeepAlive;
   }
 
   @Override

@@ -12,6 +12,11 @@
 [frame="topbot"]
 |===
 ^|Name | Type ^| Description
+|[[autoKeepAlive]]`autoKeepAlive`|`Boolean`|
++++
+Set if the MQTT client mush handle PINGREQ automatically
+ (default is true)
++++
 |[[cleanSession]]`cleanSession`|`Boolean`|-
 |[[clientId]]`clientId`|`String`|-
 |[[connectTimeout]]`connectTimeout`|`Number (int)`|-
