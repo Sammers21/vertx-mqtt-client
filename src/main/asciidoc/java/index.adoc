@@ -21,6 +21,7 @@ MqttClient client = MqttClient.create(vertx, options);
 client.connect(s -> client.disconnect());
 ----
 NOTE: default address of server provided by `link:../../apidocs/io/vertx/mqtt/MqttClientOptions.html[MqttClientOptions]` is localhost:1883 and localhost:8883 if you are using SSL/TSL.
+
 === Subscribe to a topic
 
 Now, lest go deeper and take look at this example:
@@ -51,5 +52,82 @@ client.publish("temperature",
   false,
   false);
 ----
-
 In the example we send message to topic with name "temperature".
+
+=== Keep connection with server alive
+In order to keep connection with server you should time to time send something to server otherwise server will close the connection.
+The right way to keep connection alive is a `link:../../apidocs/io/vertx/mqtt/MqttClient.html#ping--[ping]` method.
+
+IMPORTANT: by default you client keep connections with server automatically. That means that you don't need to call `link:../../apidocs/io/vertx/mqtt/MqttClient.html#ping--[ping]` in order to keep connections with server.
+The `link:../../apidocs/io/vertx/mqtt/MqttClient.html[MqttClient]` will do it for you.
+
+If you want to disable this feature then you should call `link:../../apidocs/io/vertx/mqtt/MqttClientOptions.html#setAutoKeepAlive-boolean-[setAutoKeepAlive]` with `false` as argument:
+[source,java]
+----
+options.setAutoKeepAlive(false);
+----
+
+=== Be notified when
+* publish is completed
++
+You could provide handler by calling `link:../../apidocs/io/vertx/mqtt/MqttClient.html#publishCompleteHandler-io.vertx.core.Handler-[publishCompleteHandler]`. The handler will be called each time publish is completed.
+This one is pretty useful because you could see the packetId of just received PUBACK or PUBCOMP packet.
+[source,java]
+----
+client.publishCompleteHandler(id -> {
+  System.out.println("Id of just received PUBACK or PUBCOMP packet is " + id);
+})
+  // The line of code below will trigger publishCompleteHandler (QoS 2)
+  .publish("hello", Buffer.buffer("hello".getBytes()), MqttQoS.EXACTLY_ONCE, false, false)
+  // The line of code below will trigger publishCompleteHandler (QoS is 1)
+  .publish("hello", Buffer.buffer("hello".getBytes()), MqttQoS.AT_LEAST_ONCE, false, false)
+  // The line of code below does not trigger because QoS value is 0
+  .publish("hello", Buffer.buffer("hello".getBytes()), MqttQoS.AT_LEAST_ONCE, false, false);
+----
+WARNING: The handler WILL NOT BE CALLED if sent publish packet with QoS=0.
+
+* subscribe completed
++
+[source,java]
+----
+client.subscribeCompleteHandler(mqttSubAckMessage -> {
+  System.out.println("Id of just received SUBACK packet is " + mqttSubAckMessage.messageId());
+  mqttSubAckMessage.grantedQoSLevels().stream().forEach(s -> {
+    if (s.byteValue() == 0x80) {
+      System.out.println("Failure");
+    } else {
+      System.out.println("Success. Maximum QoS is " + s.byteValue());
+    }
+  });
+})
+  .subscribe("temp", 1)
+  .subscribe("temp2", 2);
+----
+
+* unsubscribe completed
++
+[source,java]
+----
+client
+  .unsubscribeCompleteHandler(id -> System.out.println("Id of just received UNSUBACK packet is " + id))
+  .subscribe("temp", 1)
+  .unsubscribe("temp");
+----
+* unsubscribe sent
++
+[source,java]
+----
+client
+  .subscribe("temp", 1)
+  .unsubscribe("temp", id -> System.out.println("Id of just sent UNSUBSCRIBE packet is " + id));
+----
+
+* PINGRESP received
++
+[source,java]
+----
+client.pingResponseHandler(s -> {
+  //The handler will be called time to time by default
+  System.out.println("We have just received PINGRESP packet");
+});
+----

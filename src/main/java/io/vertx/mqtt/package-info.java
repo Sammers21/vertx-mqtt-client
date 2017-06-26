@@ -15,6 +15,7 @@
  * {@link examples.VertxMqttClientExamples#example1}
  * ----
  * NOTE: default address of server provided by {@link io.vertx.mqtt.MqttClientOptions} is localhost:1883 and localhost:8883 if you are using SSL/TSL.
+ *
  * === Subscribe to a topic
  *
  * Now, lest go deeper and take look at this example:
@@ -36,9 +37,58 @@
  * ----
  * {@link examples.VertxMqttClientExamples#example3}
  * ----
- *
  * In the example we send message to topic with name "temperature".
  *
+ * === Keep connection with server alive
+ * In order to keep connection with server you should time to time send something to server otherwise server will close the connection.
+ * The right way to keep connection alive is a {@link io.vertx.mqtt.MqttClient#ping()} method.
+ *
+ * IMPORTANT: by default you client keep connections with server automatically. That means that you don't need to call {@link io.vertx.mqtt.MqttClient#ping()} in order to keep connections with server.
+ * The {@link io.vertx.mqtt.MqttClient} will do it for you.
+ *
+ * If you want to disable this feature then you should call {@link io.vertx.mqtt.MqttClientOptions#setAutoKeepAlive(boolean)} with {@code false} as argument:
+ * [source,$lang]
+ * ----
+ * {@link examples.VertxMqttClientExamples#example4}
+ * ----
+ *
+ * === Be notified when
+ * * publish is completed
+ * +
+ * You could provide handler by calling {@link io.vertx.mqtt.MqttClient#publishCompleteHandler(io.vertx.core.Handler)}. The handler will be called each time publish is completed.
+ * This one is pretty useful because you could see the packetId of just received PUBACK or PUBCOMP packet.
+ * [source,$lang]
+ * ----
+ * {@link examples.VertxMqttClientExamples#example5}
+ * ----
+ * WARNING: The handler WILL NOT BE CALLED if sent publish packet with QoS=0.
+ *
+ * * subscribe completed
+ * +
+ * [source,$lang]
+ * ----
+ * {@link examples.VertxMqttClientExamples#example6}
+ * ----
+ *
+ * * unsubscribe completed
+ * +
+ * [source,$lang]
+ * ----
+ * {@link examples.VertxMqttClientExamples#example7}
+ * ----
+ * * unsubscribe sent
+ * +
+ * [source,$lang]
+ * ----
+ * {@link examples.VertxMqttClientExamples#example8}
+ * ----
+ *
+ * * PINGRESP received
+ * +
+ * [source,$lang]
+ * ----
+ * {@link examples.VertxMqttClientExamples#example9}
+ * ----
  */
 @Document(fileName = "index.adoc")
 @ModuleGen(name = "vertx-mqtt-client", groupPackage = "io.vertx")

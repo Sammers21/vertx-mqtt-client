@@ -51,4 +51,86 @@ public class VertxMqttClientExamples {
       false,
       false);
   }
+
+  /**
+   * Example for disabling keepAlive feature
+   *
+   * @param options
+   */
+  public void example4(MqttClientOptions options) {
+    options.setAutoKeepAlive(false);
+  }
+
+  /**
+   * Example for publishCompleteHandler method demonstration
+   *
+   * @param client
+   */
+  public void example5(MqttClient client) {
+    client.publishCompleteHandler(id -> {
+      System.out.println("Id of just received PUBACK or PUBCOMP packet is " + id);
+    })
+      // The line of code below will trigger publishCompleteHandler (QoS 2)
+      .publish("hello", Buffer.buffer("hello".getBytes()), MqttQoS.EXACTLY_ONCE, false, false)
+      // The line of code below will trigger publishCompleteHandler (QoS is 1)
+      .publish("hello", Buffer.buffer("hello".getBytes()), MqttQoS.AT_LEAST_ONCE, false, false)
+      // The line of code below does not trigger because QoS value is 0
+      .publish("hello", Buffer.buffer("hello".getBytes()), MqttQoS.AT_LEAST_ONCE, false, false);
+
+  }
+
+  /**
+   * Example for subscribeCompleteHandler method demonstration
+   *
+   * @param client
+   */
+  public void example6(MqttClient client) {
+    client.subscribeCompleteHandler(mqttSubAckMessage -> {
+      System.out.println("Id of just received SUBACK packet is " + mqttSubAckMessage.messageId());
+      mqttSubAckMessage.grantedQoSLevels().stream().forEach(s -> {
+        if (s.byteValue() == 0x80) {
+          System.out.println("Failure");
+        } else {
+          System.out.println("Success. Maximum QoS is " + s.byteValue());
+        }
+      });
+    })
+      .subscribe("temp", 1)
+      .subscribe("temp2", 2);
+  }
+
+  /**
+   * Example for unsubscribeCompleteHandler method demonstration
+   *
+   * @param client
+   */
+  public void example7(MqttClient client) {
+    client
+      .unsubscribeCompleteHandler(id -> System.out.println("Id of just received UNSUBACK packet is " + id))
+      .subscribe("temp", 1)
+      .unsubscribe("temp");
+  }
+
+  /**
+   * Example for unsubscribe method demonstration
+   *
+   * @param client
+   */
+  public void example8(MqttClient client) {
+    client
+      .subscribe("temp", 1)
+      .unsubscribe("temp", id -> System.out.println("Id of just sent UNSUBSCRIBE packet is " + id));
+  }
+
+  /**
+   * Example for pingResponseHandler method demonstration
+   *
+   * @param client
+   */
+  public void example9(MqttClient client) {
+    client.pingResponseHandler(s -> {
+      //The handler will be called time to time by default
+      System.out.println("We have just received PINGRESP packet");
+    });
+  }
 }
