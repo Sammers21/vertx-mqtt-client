@@ -32,9 +32,14 @@ public class MqttClientOptions extends NetClientOptions {
   private int willQoS = DEFAULT_WILL_QOS;
   private boolean willRetain = DEFAULT_WILL_RETAIN;
   private int keepAliveTimeSeconds = DEFAULT_KEEP_ALIVE_TIME_SECONDS;
-  private boolean portChangedByUser;
   private boolean isAutoKeepAlive = true;
 
+  /**
+   * Default constructor
+   */
+  public MqttClientOptions() {
+    super();
+  }
 
   /**
    * Create an instance of MqttClientOptions from JSON
@@ -46,13 +51,17 @@ public class MqttClientOptions extends NetClientOptions {
     //TODO implement this constructor
   }
 
-  public MqttClientOptions() {
-    super();
+  /**
+   * Copy constructor
+   *
+   * @param other the options to copy
+   */
+  public MqttClientOptions(MqttClientOptions other) {
+    super(other);
   }
 
   public MqttClientOptions setPort(int port) {
     this.port = port;
-    portChangedByUser = true;
     return this;
   }
 
@@ -167,10 +176,6 @@ public class MqttClientOptions extends NetClientOptions {
     return this;
   }
 
-  public boolean isPortChangedByUser() {
-    return portChangedByUser;
-  }
-
   /**
    * Set if the MQTT client mush handle PINGREQ automatically
    * (default is true)
@@ -191,10 +196,8 @@ public class MqttClientOptions extends NetClientOptions {
   }
 
   @Override
-  public NetClientOptions setSsl(boolean ssl) {
-    if (!isPortChangedByUser()) {
-      port = ssl ? DEFAULT_TSL_PORT : DEFAULT_PORT;
-    }
-    return super.setSsl(ssl);
+  public MqttClientOptions setSsl(boolean ssl) {
+    super.setSsl(ssl);
+    return this;
   }
 }

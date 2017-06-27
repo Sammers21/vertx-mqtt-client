@@ -40,30 +40,35 @@ public interface MqttClient {
   }
 
   /**
-   * Connects to an MQTT server using options provided through the constructor
+   * Connects to an MQTT server
+   *
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient connect();
 
   /**
-   * Connects to an MQTT server calling connectHandler after connection and using options provided through the
-   * constructor
+   * Connects to an MQTT server calling connectHandler after connection
    *
    * @param connectHandler handler called when the asynchronous connect call ends
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient connect(Handler<AsyncResult<MqttConnAckMessage>> connectHandler);
 
   /**
-   * Disconnects from the server
+   * Disconnects from the MQTT server
+   *
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient disconnect();
 
   /**
-   * Disconnects from the server calling disconnectHandler after disconnection
+   * Disconnects from the MQTT server calling disconnectHandler after disconnection
    *
    * @param disconnectHandler handler called when asynchronous disconnect call ends
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient disconnect(Handler<AsyncResult<Void>> disconnectHandler);
@@ -73,17 +78,33 @@ public interface MqttClient {
    *
    * @param topic    topic on which the message is published
    * @param payload  message payload
-   * @param qosLevel quality of service level
+   * @param qosLevel QoS level
    * @param isDup    if the message is a duplicate
    * @param isRetain if the message needs to be retained
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient publish(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain);
 
   /**
+   * Sends the PUBLISH message to the remote MQTT server
+   *
+   * @param topic    topic on which the message is published
+   * @param payload  message payload
+   * @param qosLevel QoS level
+   * @param isDup    if the message is a duplicate
+   * @param isRetain if the message needs to be retained
+   * @param publishSentHandler handler called after PUBLISH packet sent with packetid (not when QoS 0)
+   * @return current MQTT client instance
+   */
+  @Fluent
+  MqttClient publish(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain, Handler<AsyncResult<Integer>> publishSentHandler);
+
+  /**
    * Sets handler which will be called each time publish is completed
    *
-   * @param publishCompleteHandler handler to call. Integer inside is a packetId
+   * @param publishCompleteHandler handler called with the packetId
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient publishCompleteHandler(Handler<Integer> publishCompleteHandler);
@@ -92,6 +113,7 @@ public interface MqttClient {
    * Sets handler which will be called each time server publish something to client
    *
    * @param publishHandler handler to call
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient publishHandler(Handler<MqttPublishMessage> publishHandler);
@@ -100,43 +122,48 @@ public interface MqttClient {
    * Sets handler which will be called after SUBACK packet receiving
    *
    * @param subscribeCompleteHandler handler to call. List inside is a granted QoS array
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient subscribeCompleteHandler(Handler<MqttSubAckMessage> subscribeCompleteHandler);
 
   /**
-   * Subscribes to the topic
+   * Subscribes to the topic with a specified QoS level
    *
    * @param topic topic you subscribe on
-   * @param qos   quality of service
+   * @param qos   QoS level
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient subscribe(String topic, int qos);
 
   /**
-   * Subscribes to the topic
+   * Subscribes to the topic with a specified QoS level
    *
    * @param topic                 topic you subscribe on
-   * @param qos                   quality of service
-   * @param subscribeSentComplete handler which will call after SUBSCRIBE packet sending
+   * @param qos                   QoS level
+   * @param subscribeSentHandler handler called after SUBSCRIBE packet sent with packetid
+   * @return current MQTT client instance
    */
   @Fluent
-  MqttClient subscribe(String topic, int qos, Handler<AsyncResult<Integer>> subscribeSentComplete);
+  MqttClient subscribe(String topic, int qos, Handler<AsyncResult<Integer>> subscribeSentHandler);
 
   /**
-   * Subscribes to the topics
+   * Subscribes to the topics with related QoS levels
    *
-   * @param topics topics you subscribe on
+   * @param topics topics and related QoS levels to subscribe to
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient subscribe(Map<String, Integer> topics);
 
 
   /**
-   * Subscribes to the topic and adds a handler which will be called each time you have a new message on a topic
+   * Subscribes to the topic and adds a handler which will be called after the request is sent
    *
    * @param topics                topics you subscribe on
-   * @param subscribeSentHandler  handler which will call after SUBSCRIBE packet sending
+   * @param subscribeSentHandler  handler called after SUBSCRIBE packet sent with packetid
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient subscribe(Map<String, Integer> topics, Handler<AsyncResult<Integer>> subscribeSentHandler);
@@ -145,7 +172,8 @@ public interface MqttClient {
   /**
    * Sets handler which will be called after UNSUBACK packet receiving
    *
-   * @param unsubscribeCompleteHandler handler to call. Integer inside is a packetId
+   * @param unsubscribeCompleteHandler handler to call with the packetid
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient unsubscribeCompleteHandler(Handler<Integer> unsubscribeCompleteHandler);
@@ -153,7 +181,8 @@ public interface MqttClient {
   /**
    * Unsubscribe from receiving messages on given topic
    *
-   * @param topic Topic you wanna unsubscribe from
+   * @param topic Topic you want to unsubscribe from
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient unsubscribe(String topic);
@@ -161,8 +190,9 @@ public interface MqttClient {
   /**
    * Unsubscribe from receiving messages on given topic
    *
-   * @param topic Topic you wanna unsubscribe from
-   * @param unsubscribeSentHandler  handler which will call after UNSUBSCRIBE packet sending
+   * @param topic Topic you want to unsubscribe from
+   * @param unsubscribeSentHandler  handler called after UNSUBSCRIBE packet sent
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient unsubscribe(String topic, Handler<AsyncResult<Integer>> unsubscribeSentHandler);
@@ -171,6 +201,7 @@ public interface MqttClient {
    * Sets handler which will be called after PINGRESP packet receiving
    *
    * @param pingResponseHandler handler to call
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient pingResponseHandler(Handler<Void> pingResponseHandler);
@@ -178,6 +209,8 @@ public interface MqttClient {
   /**
    * This method is needed by the client in order to avoid server closes the
    * connection due to the keep alive timeout if client has no messages to send
+   *
+   * @return current MQTT client instance
    */
   @Fluent
   MqttClient ping();

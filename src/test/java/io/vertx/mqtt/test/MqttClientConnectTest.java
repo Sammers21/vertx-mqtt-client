@@ -15,11 +15,15 @@ import static org.junit.Assert.assertTrue;
 public class MqttClientConnectTest {
 
   @Test
-  public void simpleConnectDisconnect(TestContext context) throws InterruptedException {
+  public void connectDisconnect(TestContext context) throws InterruptedException {
+
     Async async = context.async();
     MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+
     client.connect(c -> {
+
       assertTrue(c.succeeded());
+
       client
         .disconnect(ar -> {
           assertTrue(ar.succeeded());

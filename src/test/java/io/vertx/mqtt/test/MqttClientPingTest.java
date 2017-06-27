@@ -15,6 +15,9 @@ import static org.junit.Assert.assertTrue;
 @RunWith(VertxUnitRunner.class)
 public class MqttClientPingTest  {
 
+  private static final int PING_NUMBER = 3;
+  private static final int KEEPALIVE_TIMEOUT = 2; // seconds
+
   private int count = 0;
 
   @Test
@@ -33,13 +36,13 @@ public class MqttClientPingTest  {
       client.pingResponseHandler(v ->{
 
         count++;
-        if (count == 3) {
+        if (count == PING_NUMBER) {
           client.disconnect();
           async.countDown();
         }
       });
 
-      vertx.setPeriodic(5000, t ->{
+      vertx.setPeriodic(KEEPALIVE_TIMEOUT * 1000, t ->{
         client.ping();
       });
 
@@ -53,7 +56,7 @@ public class MqttClientPingTest  {
 
     Async async = context.async();
     MqttClientOptions options = new MqttClientOptions();
-    options.setKeepAliveTimeSeconds(5);
+    options.setKeepAliveTimeSeconds(KEEPALIVE_TIMEOUT);
 
     count = 0;
     MqttClient client = MqttClient.create(Vertx.vertx(), options);
@@ -62,7 +65,7 @@ public class MqttClientPingTest  {
       client.pingResponseHandler(v ->{
 
         count++;
-        if (count == 3) {
+        if (count == PING_NUMBER) {
           client.disconnect();
           async.countDown();
         }

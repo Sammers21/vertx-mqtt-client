@@ -18,52 +18,52 @@ import static org.junit.Assert.assertTrue;
 @RunWith(VertxUnitRunner.class)
 public class MqttClientPublishTest {
 
+  private static final String MQTT_TOPIC = "/my_topic";
+  private static final String MQTT_MESSAGE = "Hello Vert.x MQTT Client";
+
+  private int messageId = 0;
+
   @Test
   @Ignore
   public void publishQoS2(TestContext context) throws InterruptedException {
-    Async async = context.async();
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions())
-      .publishCompleteHandler(comp -> {
-        async.countDown();
-      });
-    //CONNECT
-    client.connect(ar -> {
-      assertTrue(ar.succeeded());
-
-      if (ar.succeeded()) {
-        //QOS 2
-        client.publish(
-          "/hello",
-          Buffer.buffer("hello".getBytes()),
-          MqttQoS.EXACTLY_ONCE,
-          false,
-          false
-        );
-      }
-    });
-
-    async.await();
+    this.publish(context, MqttQoS.EXACTLY_ONCE);
   }
 
   @Test
   public void publishQoS1(TestContext context) throws InterruptedException {
-    Async async = context.async();
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions())
-      .publishCompleteHandler(comp -> {
-        async.countDown();
-      });
+    this.publish(context, MqttQoS.AT_LEAST_ONCE);
+  }
 
-    //CONNECT
+  private void publish(TestContext context, MqttQoS qos) {
+
+    this.messageId = 0;
+
+    Async async = context.async();
+    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+
+    client.publishCompleteHandler(pubid -> {
+      assertTrue(pubid == messageId);
+      client.disconnect();
+      async.countDown();
+    });
+
     client.connect(ar -> {
+
       assertTrue(ar.succeeded());
-      // QOS 1
+
       client.publish(
-        "/hello",
-        Buffer.buffer("hello".getBytes()),
-        MqttQoS.AT_LEAST_ONCE,
+        MQTT_TOPIC,
+        Buffer.buffer(MQTT_MESSAGE.getBytes()),
+        qos,
         false,
-        false
+        false,
+        ar1 -> {
+          assertTrue(ar.succeeded());
+          messageId = ar1.result();
+        }
       );
     });
+
+    async.await();
   }
 }

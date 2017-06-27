@@ -7,7 +7,6 @@ import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
 import io.vertx.core.impl.ContextImpl;
 import io.vertx.core.impl.VertxInternal;
 import io.vertx.core.net.impl.ConnectionBase;
-import io.vertx.core.net.impl.SSLHelper;
 import io.vertx.core.spi.metrics.NetworkMetrics;
 import io.vertx.core.spi.metrics.TCPMetrics;
 import io.vertx.mqtt.MqttClientOptions;
@@ -15,23 +14,31 @@ import io.vertx.mqtt.MqttConnAckMessage;
 import io.vertx.mqtt.MqttSubAckMessage;
 import io.vertx.mqtt.messages.MqttPublishMessage;
 
+/**
+ * Represents an MQTT connection with a remote server
+ */
 public class MqttClientConnection extends ConnectionBase {
 
   private TCPMetrics metrics;
   private MqttClientOptions options;
   private MqttClientImpl client;
 
+  /**
+   * Constructor
+   *
+   * @param vertx Vert.x instance
+   * @param channel Channel (netty) used for communication with the MQTT remote server
+   * @param context Vert.x context
+   * @param metrics TCP metrics
+   * @param options MQTT client options
+   * @param currentState  MQTT client instance
+   */
   MqttClientConnection(VertxInternal vertx, Channel channel, ContextImpl context, TCPMetrics metrics,
                        MqttClientOptions options, MqttClientImpl currentState) {
     super(vertx, channel, context);
+    this.metrics = metrics;
     this.options = options;
     this.client = currentState;
-  }
-
-  public MqttClientConnection(VertxInternal vertx, Channel channel, String host,
-                              int port, ContextImpl context, SSLHelper helper, TCPMetrics metrics) {
-    super(vertx, channel, context);
-    this.metrics = metrics;
   }
 
   @Override
@@ -44,7 +51,7 @@ public class MqttClientConnection extends ConnectionBase {
   }
 
   /**
-   * See for more information http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/csprd02/mqtt-v3.1.1-csprd02.html#_Toc385349763
+   * Handle the MQTT message received from the remote MQTT server
    *
    * @param msg Incoming Packet
    */

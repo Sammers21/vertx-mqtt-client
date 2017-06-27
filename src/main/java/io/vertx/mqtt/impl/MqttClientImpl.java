@@ -62,14 +62,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   private static final String PROTOCOL_NAME = "MQTT";
   private static final int PROTOCOL_VERSION = 4;
 
-  /**
-   * The client pass some options for connection
-   */
   private MqttClientOptions options;
-
-  /**
-   * Connection with server
-   */
   private ConnectionBase connection;
 
   // handler to call when a publish is complete
@@ -108,7 +101,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   }
 
   /**
-   * See {@link MqttClient#connect()} for more details
+   * See {@link MqttClient#connect(Handler)} for more details
    */
   @Override
   public MqttClient connect(Handler<AsyncResult<MqttConnAckMessage>> connectHandler) {
@@ -170,7 +163,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   }
 
   /**
-   * See {@link MqttClient#disconnect()} for more details
+   * See {@link MqttClient#disconnect(Handler)} for more details
    */
   @Override
   public MqttClient disconnect(Handler<AsyncResult<Void>> disconnectHandler) {
@@ -200,6 +193,14 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
    */
   @Override
   public MqttClient publish(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain) {
+    return publish(topic, payload, qosLevel, isDup, isRetain, null);
+  }
+
+  /**
+   * See {@link MqttClient#publish(String, Buffer, MqttQoS, boolean, boolean, Handler)} for more details
+   */
+  @Override
+  public MqttClient publish(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain, Handler<AsyncResult<Integer>> publishSentHandler) {
 
     MqttFixedHeader fixedHeader = new MqttFixedHeader(
       MqttMessageType.PUBLISH,
@@ -216,6 +217,10 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
     io.netty.handler.codec.mqtt.MqttMessage publish = MqttMessageFactory.newMessage(fixedHeader, variableHeader, buf);
 
     this.write(publish);
+
+    if (publishSentHandler != null) {
+      publishSentHandler.handle(Future.succeededFuture(variableHeader.messageId()));
+    }
 
     return this;
   }
@@ -262,8 +267,8 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
    * See {@link MqttClient#subscribe(String, int, Handler)} for more details
    */
   @Override
-  public MqttClient subscribe(String topic, int qos, Handler<AsyncResult<Integer>> subscribeSentComplete) {
-    return subscribe(Collections.singletonMap(topic, qos), subscribeSentComplete);
+  public MqttClient subscribe(String topic, int qos, Handler<AsyncResult<Integer>> subscribeSentHandler) {
+    return subscribe(Collections.singletonMap(topic, qos), subscribeSentHandler);
   }
 
   /**
@@ -507,8 +512,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
 
             return MqttConnAckMessage.create(
               connack.variableHeader().connectReturnCode(),
-              connack.variableHeader().isSessionPresent()
-            );
+              connack.variableHeader().isSessionPresent());
 
           case SUBACK:
 

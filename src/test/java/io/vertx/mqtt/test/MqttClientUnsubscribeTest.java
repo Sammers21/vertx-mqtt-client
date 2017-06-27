@@ -16,26 +16,56 @@ import static org.junit.Assert.assertTrue;
 @RunWith(VertxUnitRunner.class)
 public class MqttClientUnsubscribeTest {
 
+  private static final String MQTT_TOPIC = "/my_topic";
+
+  private int messageId = 0;
+
   @Test
   public void unsubscribeQoS0(TestContext context) throws InterruptedException {
-    Async async = context.async(3);
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions())
-      .publishHandler(s -> async.countDown())
-      .unsubscribeCompleteHandler(s -> async.countDown());
-      //CONNECT
-      client.connect(ar -> {
-        assertTrue(ar.succeeded());
-        client.subscribe("/hello", 0);
-        client.publish(
-          "/hello",
-          Buffer.buffer("hello".getBytes()),
-          MqttQoS.AT_MOST_ONCE,
-          false,
-          false
-        );
-        client.unsubscribe("/topic");
-        async.countDown();
+    this.unsubscribe(context, MqttQoS.AT_MOST_ONCE);
+  }
+
+  @Test
+  public void unsubscribeQoS1(TestContext context) throws InterruptedException {
+    this.unsubscribe(context, MqttQoS.AT_LEAST_ONCE);
+  }
+
+  @Test
+  public void unsubscribeQoS2(TestContext context) throws InterruptedException {
+    this.unsubscribe(context, MqttQoS.EXACTLY_ONCE);
+  }
+
+  private void unsubscribe(TestContext context, MqttQoS qos) {
+
+    this.messageId = 0;
+
+    Async async = context.async();
+    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+
+    client.unsubscribeCompleteHandler(unsubackid -> {
+      assertTrue(unsubackid == messageId);
+      client.disconnect();
+      async.countDown();
+    });
+
+    client.subscribeCompleteHandler(suback -> {
+      assertTrue(suback.messageId() == messageId);
+      assertTrue(suback.grantedQoSLevels().contains(qos.value()));
+
+      client.unsubscribe(MQTT_TOPIC, ar2 -> {
+        assertTrue(ar2.succeeded());
+        messageId = ar2.result();
       });
+    });
+
+    client.connect(ar -> {
+      assertTrue(ar.succeeded());
+
+      client.subscribe(MQTT_TOPIC, qos.value(), ar1 -> {
+        assertTrue(ar1.succeeded());
+        messageId = ar1.result();
+      });
+    });
 
     async.await();
   }
