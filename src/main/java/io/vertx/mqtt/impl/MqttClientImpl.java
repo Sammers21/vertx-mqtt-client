@@ -8,20 +8,8 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.DecoderResult;
-import io.netty.handler.codec.mqtt.MqttConnectPayload;
-import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
-import io.netty.handler.codec.mqtt.MqttConnectVariableHeader;
-import io.netty.handler.codec.mqtt.MqttDecoder;
-import io.netty.handler.codec.mqtt.MqttEncoder;
-import io.netty.handler.codec.mqtt.MqttFixedHeader;
-import io.netty.handler.codec.mqtt.MqttMessageFactory;
-import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
-import io.netty.handler.codec.mqtt.MqttMessageType;
-import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
-import io.netty.handler.codec.mqtt.MqttQoS;
-import io.netty.handler.codec.mqtt.MqttSubscribePayload;
+import io.netty.handler.codec.mqtt.*;
 import io.netty.handler.codec.mqtt.MqttTopicSubscription;
-import io.netty.handler.codec.mqtt.MqttUnsubscribePayload;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -37,8 +25,7 @@ import io.vertx.core.net.impl.NetClientBase;
 import io.vertx.core.net.impl.SSLHelper;
 import io.vertx.core.net.impl.VertxHandler;
 import io.vertx.core.spi.metrics.TCPMetrics;
-import io.vertx.mqtt.MqttClient;
-import io.vertx.mqtt.MqttClientOptions;
+import io.vertx.mqtt.*;
 import io.vertx.mqtt.MqttConnAckMessage;
 import io.vertx.mqtt.MqttConnectionException;
 import io.vertx.mqtt.MqttSubAckMessage;
@@ -49,14 +36,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import static io.netty.handler.codec.mqtt.MqttQoS.*;
-
+import io.netty.handler.logging.LoggingHandler;
 
 /**
  * MQTT client implementation
  */
 public class MqttClientImpl extends NetClientBase<MqttClientConnection> implements MqttClient {
+
+  private static final Logger log = LoggerFactory.getLogger(MqttClientImpl.class);
 
   private static final int MAX_MESSAGE_ID = 65535;
   private static final String PROTOCOL_NAME = "MQTT";
@@ -106,15 +97,17 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   @Override
   public MqttClient connect(Handler<AsyncResult<MqttConnAckMessage>> connectHandler) {
 
+    log.debug(String.format("Trying to connect with %s:%d", options.getHost(), options.getPort()));
     this.doConnect(options.getPort(), options.getHost(), options.getHost(), done -> {
 
       // the TCP connection fails
       if (done.failed()) {
-
+        log.error(String.format("Can't connect to %s:%d", options.getHost(), options.getPort()), done.cause());
         if (connectHandler != null) {
           connectHandler.handle(Future.failedFuture(done.cause()));
         }
       } else {
+        log.info(String.format("Connection with %s:%d established successfully", options.getHost(), options.getPort()));
 
         this.connection = done.result();
         this.connectHandler = connectHandler;
@@ -467,6 +460,10 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
 
   @Override
   protected void initChannel(ChannelPipeline pipeline) {
+    if (options.getLogActivity()) {
+      pipeline.addLast("logging", new LoggingHandler());
+    }
+
     // add into pipeline netty's (en/de)coder
     pipeline.addLast("mqttEncoder", MqttEncoder.INSTANCE);
     pipeline.addLast("mqttDecoder", new MqttDecoder());
@@ -504,6 +501,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
       DecoderResult result = mqttMessage.decoderResult();
       if (result.isSuccess() && result.isFinished()) {
 
+        log.debug(String.format("Incoming packet %s", msg));
         switch (mqttMessage.fixedHeader().messageType()) {
 
           case CONNACK:
@@ -558,6 +556,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   public MqttClientImpl write(io.netty.handler.codec.mqtt.MqttMessage mqttMessage) {
 
     synchronized (this.connection) {
+      log.debug(String.format("Sending packet %s", mqttMessage));
       this.connection.writeToChannel(mqttMessage);
       return this;
     }
@@ -705,7 +704,9 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
         if (msg.code() == MqttConnectReturnCode.CONNECTION_ACCEPTED) {
           this.connectHandler.handle(Future.succeededFuture(msg));
         } else {
-          this.connectHandler.handle(Future.failedFuture(new MqttConnectionException(msg.code())));
+          MqttConnectionException exception = new MqttConnectionException(msg.code());
+          log.error(exception.getMessage());
+          this.connectHandler.handle(Future.failedFuture(exception));
         }
       }
     }
