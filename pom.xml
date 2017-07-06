@@ -27,6 +27,7 @@
   <properties>
     <stack.version>3.4.2-SNAPSHOT</stack.version>
     <junit.version>4.12</junit.version>
+    <slf4j.version>1.7.21</slf4j.version>
   </properties>
 
   <dependencyManagement>
@@ -81,6 +82,14 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-unit</artifactId>
       <scope>test</scope>
+    </dependency>
+
+    <!-- Logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 

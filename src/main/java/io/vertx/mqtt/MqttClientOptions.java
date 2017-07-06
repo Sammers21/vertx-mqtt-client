@@ -220,4 +220,22 @@ public class MqttClientOptions extends NetClientOptions {
     super.setSsl(ssl);
     return this;
   }
+
+
+  @Override
+  public String toString() {
+    return "Options {" +
+      "clientId='" + clientId + '\'' +
+      ", username='" + username + '\'' +
+      ", password='" + password + '\'' +
+      ", willTopic='" + willTopic + '\'' +
+      ", willMessage='" + willMessage + '\'' +
+      ", cleanSession=" + cleanSession +
+      ", willFlag=" + willFlag +
+      ", willQoS=" + willQoS +
+      ", willRetain=" + willRetain +
+      ", keepAliveTimeSeconds=" + keepAliveTimeSeconds +
+      ", isAutoKeepAlive=" + isAutoKeepAlive +
+      '}';
+  }
 }
