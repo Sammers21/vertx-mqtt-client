@@ -394,6 +394,11 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
     return this;
   }
 
+  @Override
+  public String clientId() {
+    return this.options.getClientId();
+  }
+
   /**
    * Sends PUBACK packet to server
    *

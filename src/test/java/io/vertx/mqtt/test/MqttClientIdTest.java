@@ -28,14 +28,16 @@ import org.junit.runner.RunWith;
 import static junit.framework.TestCase.assertFalse;
 import static org.hamcrest.core.IsNull.notNullValue;
 import static org.hamcrest.core.IsNull.nullValue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
-public class MqttClientIdAutogenTest {
+public class MqttClientIdTest {
 
   @Test
   public void afterConnectClientIdGenerated(TestContext context) throws InterruptedException {
+
     Async async = context.async();
 
     MqttClientOptions options = new MqttClientOptions();
@@ -46,9 +48,30 @@ public class MqttClientIdAutogenTest {
     client.connect(c -> {
 
       assertTrue(c.succeeded());
-      assertTrue(options.getClientId().length() == 36);
-      assertThat(options.getClientId(), notNullValue());
-      assertFalse(options.getClientId().isEmpty());
+      assertTrue(client.clientId().length() == 36);
+      assertThat(client.clientId(), notNullValue());
+      assertFalse(client.clientId().isEmpty());
+
+      async.countDown();
+    });
+    async.await();
+  }
+
+  @Test
+  public void afterConnectClientId(TestContext context) {
+
+    Async async = context.async();
+
+    MqttClientOptions options = new MqttClientOptions();
+    options.setClientId("myClient");
+    MqttClient client = MqttClient.create(Vertx.vertx(), options);
+
+    client.connect(c -> {
+
+      assertTrue(c.succeeded());
+      assertThat(client.clientId(), notNullValue());
+      assertFalse(client.clientId().isEmpty());
+      assertEquals(client.clientId(), "myClient");
 
       async.countDown();
     });

@@ -230,4 +230,9 @@ public interface MqttClient {
    */
   @Fluent
   MqttClient ping();
+
+  /**
+   * @return the client identifier
+   */
+  String clientId();
 }
