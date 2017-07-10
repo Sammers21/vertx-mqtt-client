@@ -50,6 +50,7 @@ import io.vertx.mqtt.MqttSubAckMessage;
 import io.vertx.mqtt.messages.MqttPublishMessage;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -87,6 +88,11 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   Handler<Void> pingrespHandler;
   // all QoS=1 and QoS=2 publish sessions
   //Map<Integer, PublishSession> sessions = new HashMap<>();
+
+  Queue<MqttMessage> qos1outbound=new ConcurrentLinkedQueue<>();
+  Queue<MqttMessage> qos2outbound=new ConcurrentLinkedQueue<>();
+  Queue<MqttMessage> qos2inbound =new ConcurrentLinkedQueue<>();
+
 
   // counter for the message identifier
   private int messageIdCounter;
@@ -237,6 +243,15 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
 
     if (publishSentHandler != null) {
       publishSentHandler.handle(Future.succeededFuture(variableHeader.messageId()));
+    }
+
+    switch (qosLevel.value()) {
+      case 1:
+        qos1outbound.add(publish);
+        break;
+      case 2:
+        qos2outbound.add(publish);
+        break;
     }
 
     return this;
@@ -473,6 +488,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
     io.netty.handler.codec.mqtt.MqttMessage pubrel = MqttMessageFactory.newMessage(fixedHeader, variableHeader, null);
 
     this.write(pubrel);
+    qos2outbound.add(pubrel);
   }
 
   @Override
@@ -639,6 +655,9 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePubcomp(int pubcompMessageId) {
 
     synchronized (this.connection) {
+      // should we throw exception here if top queue elements packetId is not equal to pubcompMessageId ?
+      qos2outbound.poll();
+
       if (this.publishCompleteHandler != null) {
         this.publishCompleteHandler.handle(pubcompMessageId);
       }
@@ -653,6 +672,9 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePubrec(int pubrecMessageId) {
 
     synchronized (this.connection) {
+     // should we throw exception here if top queue elements packetId is not equal to pubrecMessageId ?
+      qos2outbound.poll();
+
       this.publishRelease(pubrecMessageId);
     }
   }
