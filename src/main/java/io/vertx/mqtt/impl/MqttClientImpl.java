@@ -51,7 +51,6 @@ import io.vertx.mqtt.messages.MqttPublishMessage;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
