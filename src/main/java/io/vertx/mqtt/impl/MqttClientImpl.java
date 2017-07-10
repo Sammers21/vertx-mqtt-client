@@ -76,7 +76,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   // handler to call when a unsubscribe request is completed
   Handler<Integer> unsubscribeCompleteHandler;
   // handler to call when a publish message comes in
-  Handler<AsyncResult<MqttPublishMessage>> publishHandler;
+  Handler<MqttPublishMessage> publishHandler;
   // handler to call when a subscribe request is completed
   Handler<MqttSubAckMessage> subscribeCompleteHandler;
   // handler to call when a connection request is completed
@@ -273,7 +273,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
    * See {@link MqttClient#publishHandler(Handler)} for more details
    */
   @Override
-  public MqttClient publishHandler(Handler<AsyncResult<MqttPublishMessage>> publishHandler) {
+  public MqttClient publishHandler(Handler<MqttPublishMessage> publishHandler) {
 
     this.publishHandler = publishHandler;
     return this;
@@ -716,14 +716,14 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
 
         case AT_MOST_ONCE:
           if (this.publishHandler != null) {
-            this.publishHandler.handle(Future.succeededFuture(msg));
+            this.publishHandler.handle(msg);
           }
           break;
 
         case AT_LEAST_ONCE:
           this.publishAcknowledge(msg.messageId());
           if (this.publishHandler != null) {
-            this.publishHandler.handle(Future.succeededFuture(msg));
+            this.publishHandler.handle(msg);
           }
           break;
 
@@ -731,7 +731,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
           this.publishReceived(msg.messageId());
           // immediately call handler
           if (this.publishHandler != null) {
-            this.publishHandler.handle(Future.succeededFuture(msg));
+            this.publishHandler.handle(msg);
           }
           break;
       }

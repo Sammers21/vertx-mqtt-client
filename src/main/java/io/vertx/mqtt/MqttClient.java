@@ -132,7 +132,7 @@ public interface MqttClient {
    * @return current MQTT client instance
    */
   @Fluent
-  MqttClient publishHandler(Handler<AsyncResult<MqttPublishMessage>> publishHandler);
+  MqttClient publishHandler(Handler<MqttPublishMessage> publishHandler);
 
   /**
    * Sets handler which will be called after SUBACK packet receiving
