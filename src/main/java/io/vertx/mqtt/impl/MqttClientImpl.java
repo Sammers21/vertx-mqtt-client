@@ -86,11 +86,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   // handler to call when a pingresp is received
   Handler<Void> pingrespHandler;
   // all QoS=1 and QoS=2 publish sessions
-<<<<<<< HEAD
   //Map<Integer, PublishSession> sessions = new HashMap<>();
-=======
-  Map<Integer, PublishSession> sessions = new HashMap<>();
->>>>>>> 395dcf388a68a0c099a21325ca71576bc3aba2c8
 
   // counter for the message identifier
   private int messageIdCounter;
@@ -98,7 +94,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   /**
    * Constructor
    *
-   * @param vertx   Vert.x instance
+   * @param vertx Vert.x instance
    * @param options MQTT client options
    */
   public MqttClientImpl(Vertx vertx, MqttClientOptions options) {
@@ -222,23 +218,29 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
    */
   @Override
   public MqttClient publish(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain, Handler<AsyncResult<Integer>> publishSentHandler) {
-    this.publishSentHandler = publishSentHandler;
-    int messageId = nextMessageId();
 
-    io.netty.handler.codec.mqtt.MqttMessage publish = makePublishMessageNetty(topic, payload, qosLevel, isDup, isRetain, messageId);
+    MqttFixedHeader fixedHeader = new MqttFixedHeader(
+      MqttMessageType.PUBLISH,
+      isDup,
+      qosLevel,
+      isRetain,
+      0
+    );
+
+    MqttPublishVariableHeader variableHeader = new MqttPublishVariableHeader(topic, nextMessageId());
+
+    ByteBuf buf = Unpooled.copiedBuffer(payload.getBytes());
+
+    io.netty.handler.codec.mqtt.MqttMessage publish = MqttMessageFactory.newMessage(fixedHeader, variableHeader, buf);
 
     this.write(publish);
 
     if (publishSentHandler != null) {
-      publishSentHandler.handle(Future.succeededFuture(messageId));
+      publishSentHandler.handle(Future.succeededFuture(variableHeader.messageId()));
     }
-
-    PublishSession publishSession = new PublishSession(makePublishMessageVertx(topic, payload, qosLevel, isDup, isRetain, messageId), true);
-    sessions.put(messageId, publishSession);
 
     return this;
   }
-
 
   /**
    * See {@link MqttClient#publishCompleteHandler(Handler)} for more details
@@ -568,111 +570,6 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
     return msg;
   }
 
-  enum State {
-
-    // send PUBLISH util receive PUBACK or PUBREC
-    SENDING_PUBLISH,
-
-    // send PUBREL until receive RUBCOMP
-    SENDING_PUBREL,
-
-    // send PUBREC until receive RUBREL
-    SENDING_PUBREC,
-
-    // successfully complete receiving/sending of PUBREL packet
-    DONE,
-
-    // failed to receive/send
-    FAILED
-  }
-
-  class PublishSession {
-
-    // delay between attempts
-    int delay;
-    // ID of vertx periodic timer which control attempts
-    long timerId;
-    // Quality of Service
-    int qos;
-    // true in case client is receiver of message and false if sender
-    boolean isTheClientReceiver;
-    // attempts remaining
-    AtomicInteger attempts;
-    // current state of session
-    State state;
-    // message received or sent during the session
-    MqttPublishMessage publishMessage;
-
-    PublishSession(MqttPublishMessage msg, boolean isTheClientReceiver) {
-      this.delay = options.getDelay();
-      this.attempts = new AtomicInteger(options.getAttempts());
-      this.isTheClientReceiver = isTheClientReceiver;
-      this.publishMessage = msg;
-      this.qos = msg.qosLevel().value();
-
-
-      if (qos == 2 && isTheClientReceiver) {
-
-        // case when we are receiving PUBLISH with QoS=2
-        // we have to try to re-send PUBREC with some delay and some attempts
-        state = State.SENDING_PUBREC;
-        timerId = timer(()-> publishReceived(this.publishMessage.messageId()));
-
-      } else if (qos == 2 && !isTheClientReceiver) {
-
-        // case when we are sending PUBLISH with QoS=2
-        // we have to try to re-send PUBLISH with some delay and some attempts
-        state = State.SENDING_PUBLISH;
-        timerId = timer(() -> publish(publishMessage));
-
-      } else if (qos == 1 && !isTheClientReceiver) {
-
-        // case when we are sending PUBLISH with QoS=1
-        // we have to try to re-send PUBLISH with some delay and some attempts
-        state = State.SENDING_PUBLISH;
-        timerId = timer(() -> publish(publishMessage));
-
-      }
-    }
-
-
-    /**
-     * disable periodic timer
-     */
-    void disableTimer() {
-      vertx.cancelTimer(timerId);
-    }
-
-
-    long timer(Runnable runnable) {
-      return vertx.setPeriodic(options.getDelay(), id -> {
-        if (this.attempts.get() <= 0) {
-          this.state = State.FAILED;
-          publishHandler.handle(Future.failedFuture("failed to receive publish"));
-        } else {
-          this.attempts.decrementAndGet();
-          runnable.run();
-        }
-      });
-    }
-
-    void handlePuback() {
-      disableTimer();
-      this.state = State.DONE;
-    }
-
-    void handlePubrec() {
-      disableTimer();
-      this.state = State.SENDING_PUBREL;
-      timerId = timer(() -> publishRelease(publishMessage.messageId()));
-    }
-
-    void handlePubcomp() {
-      disableTimer();
-      this.state = State.DONE;
-    }
-  }
-
   /**
    * Update and return the next message identifier
    *
@@ -728,10 +625,6 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePuback(int pubackMessageId) {
 
     synchronized (this.connection) {
-
-      PublishSession publishSession = sessions.get(pubackMessageId);
-      publishSession.handlePuback();
-
       if (this.publishCompleteHandler != null) {
         this.publishCompleteHandler.handle(pubackMessageId);
       }
@@ -746,11 +639,6 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePubcomp(int pubcompMessageId) {
 
     synchronized (this.connection) {
-
-      PublishSession session = sessions.get(pubcompMessageId);
-      session.handlePubcomp();
-
-
       if (this.publishCompleteHandler != null) {
         this.publishCompleteHandler.handle(pubcompMessageId);
       }
@@ -765,10 +653,6 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePubrec(int pubrecMessageId) {
 
     synchronized (this.connection) {
-
-      PublishSession session = sessions.get(pubrecMessageId);
-      session.handlePubrec();
-
       this.publishRelease(pubrecMessageId);
     }
   }
@@ -813,12 +697,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
 
         case EXACTLY_ONCE:
           this.publishReceived(msg.messageId());
-
-          //save the PUBLISH message for raising the handler when PUBREL will arrive
-          PublishSession publishSession = new PublishSession(msg, true);
-
-          // store session
-          sessions.put(msg.messageId(), publishSession);
+          // TODO : save the PUBLISH message for raising the handler when PUBREL will arrive
           break;
       }
     }
@@ -832,30 +711,17 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePubrel(int pubrelMessageId) {
 
     synchronized (this.connection) {
-      PublishSession session = sessions.get(pubrelMessageId);
+      this.publishComplete(pubrelMessageId);
 
-      if (session == null) {
-        this.publishHandler.handle(Future.failedFuture("Session with id " + pubrelMessageId + " does not exists"));
-        return;
-      }
-
-      if (session.state == State.SENDING_PUBREC) {
-        session.disableTimer();
-        session.state = State.DONE;
-        this.publishComplete(pubrelMessageId);
-
-        //call publishHandler with the message received in the PUBLISH
-        if (this.publishHandler != null) {
-          this.publishHandler.handle(Future.succeededFuture(session.publishMessage));
-        }
-      }
+      // TODO : call publishHandler with the message received in the PUBISH
+      //        we have to save it somewhere (maybe in a queue)
     }
   }
 
   /**
    * Used for calling the connect handler when the server replies to the request
    *
-   * @param msg connection response message
+   * @param msg  connection response message
    */
   void handleConnack(MqttConnAckMessage msg) {
 
@@ -880,25 +746,4 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   private String generateRandomClientId() {
     return UUID.randomUUID().toString();
   }
-
-  private MqttPublishMessage makePublishMessageVertx(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain, int messageId) {
-    return MqttPublishMessage.create(messageId, qosLevel, isDup, isRetain, topic, Unpooled.copiedBuffer(payload.getBytes()));
-  }
-
-  private io.netty.handler.codec.mqtt.MqttMessage makePublishMessageNetty(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain, int messageId) {
-    MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, isDup, qosLevel, isRetain, 0);
-    MqttPublishVariableHeader variableHeader = new MqttPublishVariableHeader(topic, messageId);
-    ByteBuf buf = Unpooled.copiedBuffer(payload.getBytes());
-    return MqttMessageFactory.newMessage(fixedHeader, variableHeader, buf);
-  }
-
-  private void publish(MqttPublishMessage msg) {
-    io.netty.handler.codec.mqtt.MqttMessage publish = makePublishMessageNetty(msg.topicName(), msg.payload(), msg.qosLevel(), msg.isDup(), msg.isRetain(), msg.messageId());
-    this.write(publish);
-    if (publishSentHandler != null) {
-      publishSentHandler.handle(Future.succeededFuture(((MqttPublishVariableHeader) publish.variableHeader()).messageId()));
-    }
-  }
-
-
 }
