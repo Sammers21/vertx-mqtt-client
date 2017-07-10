@@ -644,11 +644,12 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePuback(int pubackMessageId) {
 
     synchronized (this.connection) {
-      // should we throw exception here if top queue elements packetId is not equal to pubackMessageId?
-      qos1outbound.poll();
+     if (((MqttPublishVariableHeader) qos1outbound.peek().variableHeader()).messageId() == pubackMessageId) {
+        qos1outbound.poll();
 
-      if (this.publishCompleteHandler != null) {
-        this.publishCompleteHandler.handle(pubackMessageId);
+        if (this.publishCompleteHandler != null) {
+          this.publishCompleteHandler.handle(pubackMessageId);
+        }
       }
     }
   }
@@ -661,11 +662,13 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePubcomp(int pubcompMessageId) {
 
     synchronized (this.connection) {
-      // should we throw exception here if top queue elements packetId is not equal to pubcompMessageId ?
-      qos2outbound.poll();
+      if (((MqttPublishVariableHeader) qos2outbound.peek().variableHeader()).messageId() == pubcompMessageId) {
+        qos2outbound.poll();
 
-      if (this.publishCompleteHandler != null) {
-        this.publishCompleteHandler.handle(pubcompMessageId);
+        if (this.publishCompleteHandler != null) {
+          this.publishCompleteHandler.handle(pubcompMessageId);
+        }
+
       }
     }
   }
@@ -678,10 +681,11 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePubrec(int pubrecMessageId) {
 
     synchronized (this.connection) {
-     // should we throw exception here if top queue elements packetId is not equal to pubrecMessageId ?
-      qos2outbound.poll();
+      if (((MqttPublishVariableHeader) qos2outbound.peek().variableHeader()).messageId() == pubrecMessageId) {
+        qos2outbound.poll();
 
-      this.publishRelease(pubrecMessageId);
+        this.publishRelease(pubrecMessageId);
+      }
     }
   }
 
@@ -742,10 +746,11 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePubrel(int pubrelMessageId) {
 
     synchronized (this.connection) {
-      // should we throw exception here if top queue elements packetId is not equal to pubrelMessageId?
-      qos2inbound.poll();
+      if (((MqttPublishVariableHeader) qos2inbound.peek().variableHeader()).messageId() == pubrelMessageId) {
+        qos2inbound.poll();
 
-      this.publishComplete(pubrelMessageId);
+        this.publishComplete(pubrelMessageId);
+      }
     }
   }
 
