@@ -47,9 +47,9 @@ public class VertxMqttClientExamples {
    */
   public void example2(MqttClient client) {
     client.publishHandler(s -> {
-      System.out.println("There are new message in topic: " + s.result().topicName());
-      System.out.println("Content(as string) of the message: " + s.result().payload().toString());
-      System.out.println("QoS: " + s.result().qosLevel());
+      System.out.println("There are new message in topic: " + s.topicName());
+      System.out.println("Content(as string) of the message: " + s.payload().toString());
+      System.out.println("QoS: " + s.qosLevel());
     })
       .subscribe("rpi2/temp", 2);
   }
