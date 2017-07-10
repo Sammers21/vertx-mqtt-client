@@ -86,12 +86,16 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   Handler<AsyncResult<Integer>> publishSentHandler;
   // handler to call when a pingresp is received
   Handler<Void> pingrespHandler;
-  // all QoS=1 and QoS=2 publish sessions
-  //Map<Integer, PublishSession> sessions = new HashMap<>();
 
-  Queue<MqttMessage> qos1outbound=new ConcurrentLinkedQueue<>();
-  Queue<MqttMessage> qos2outbound=new ConcurrentLinkedQueue<>();
-  Queue<MqttMessage> qos2inbound =new ConcurrentLinkedQueue<>();
+  // storage of PUBLISH QoS=1 messages which was not responded with PUBACK
+  Queue<MqttMessage> qos1outbound = new ConcurrentLinkedQueue<>();
+
+  // storage of PUBLISH QoS=2 messages which was not responded with PUBREC
+  // and PUBREL messages which was not responded with PUBCOMP
+  Queue<MqttMessage> qos2outbound = new ConcurrentLinkedQueue<>();
+
+  // storage of PUBREC messages which was not responded with PUBREL
+  Queue<MqttMessage> qos2inbound = new ConcurrentLinkedQueue<>();
 
 
   // counter for the message identifier
@@ -452,6 +456,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
     io.netty.handler.codec.mqtt.MqttMessage pubrec = MqttMessageFactory.newMessage(fixedHeader, variableHeader, null);
 
     this.write(pubrec);
+    qos2inbound.add(pubrec);
   }
 
   /**
@@ -641,6 +646,9 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePuback(int pubackMessageId) {
 
     synchronized (this.connection) {
+      // should we throw exception here if top queue elements packetId is not equal to pubackMessageId?
+      qos1outbound.poll();
+
       if (this.publishCompleteHandler != null) {
         this.publishCompleteHandler.handle(pubackMessageId);
       }
@@ -719,7 +727,10 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
 
         case EXACTLY_ONCE:
           this.publishReceived(msg.messageId());
-          // TODO : save the PUBLISH message for raising the handler when PUBREL will arrive
+          // immediately call handler
+          if (this.publishHandler != null) {
+            this.publishHandler.handle(Future.succeededFuture(msg));
+          }
           break;
       }
     }
@@ -733,10 +744,10 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   void handlePubrel(int pubrelMessageId) {
 
     synchronized (this.connection) {
-      this.publishComplete(pubrelMessageId);
+      // should we throw exception here if top queue elements packetId is not equal to pubrelMessageId?
+      qos2inbound.poll();
 
-      // TODO : call publishHandler with the message received in the PUBISH
-      //        we have to save it somewhere (maybe in a queue)
+      this.publishComplete(pubrelMessageId);
     }
   }
 
