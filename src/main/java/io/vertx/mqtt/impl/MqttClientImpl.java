@@ -81,8 +81,6 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   Handler<MqttSubAckMessage> subscribeCompleteHandler;
   // handler to call when a connection request is completed
   Handler<AsyncResult<MqttConnAckMessage>> connectHandler;
-  // handler to call when a PUBLISH packet is sent
-  Handler<AsyncResult<Integer>> publishSentHandler;
   // handler to call when a pingresp is received
   Handler<Void> pingrespHandler;
 
