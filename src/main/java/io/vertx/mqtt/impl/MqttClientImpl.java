@@ -68,7 +68,6 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   private static final String PROTOCOL_NAME = "MQTT";
   private static final int PROTOCOL_VERSION = 4;
 
-  private Vertx vertx;
   private MqttClientOptions options;
   private ConnectionBase connection;
 
@@ -109,7 +108,6 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
    */
   public MqttClientImpl(Vertx vertx, MqttClientOptions options) {
     super((VertxInternal) vertx, options, true);
-    this.vertx = vertx;
     this.options = options;
   }
 
