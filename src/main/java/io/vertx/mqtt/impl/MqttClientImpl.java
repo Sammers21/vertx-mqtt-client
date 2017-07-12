@@ -215,7 +215,9 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   public MqttClient publish(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain, Handler<AsyncResult<Integer>> publishSentHandler) {
 
     if (!isValidTopicName(topic)) {
-      log.warn("Invalid Topic Name. It mustn't contains wildcards: # and +. Also it can't contains U+0000(NULL) chars");
+      String msg = "Invalid Topic Name. It mustn't contains wildcards: # and +. Also it can't contains U+0000(NULL) chars";
+      log.warn(msg);
+      publishSentHandler.handle(Future.failedFuture(msg));
       return this;
     }
 
@@ -309,7 +311,9 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
       .reduce((one, another) -> one + ", " + another);
 
     if (reduce.isPresent()) {
-      log.warn("Invalid Topic Filters: " + reduce.get());
+      String msg = "Invalid Topic Filters: " + reduce.get();
+      log.warn(msg);
+      subscribeSentHandler.handle(Future.failedFuture(msg));
       return this;
     }
 
