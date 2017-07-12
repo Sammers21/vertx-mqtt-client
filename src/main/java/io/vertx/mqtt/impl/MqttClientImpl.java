@@ -215,9 +215,12 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   public MqttClient publish(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain, Handler<AsyncResult<Integer>> publishSentHandler) {
 
     if (!isValidTopicName(topic)) {
-      String msg = "Invalid Topic Name. It mustn't contains wildcards: # and +. Also it can't contains U+0000(NULL) chars";
+      String msg = "Invalid Topic Name - "+ topic +
+        ". It mustn't contains wildcards: # and +. Also it can't contains U+0000(NULL) chars";
       log.warn(msg);
-      publishSentHandler.handle(Future.failedFuture(msg));
+      if (publishSentHandler != null) {
+        publishSentHandler.handle(Future.failedFuture(msg));
+      }
       return this;
     }
 
@@ -313,7 +316,9 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
     if (reduce.isPresent()) {
       String msg = "Invalid Topic Filters: " + reduce.get();
       log.warn(msg);
-      subscribeSentHandler.handle(Future.failedFuture(msg));
+      if (subscribeSentHandler != null) {
+        subscribeSentHandler.handle(Future.failedFuture(msg));
+      }
       return this;
     }
 
@@ -768,7 +773,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
    * @param topicName given Topic Name
    * @return true - valid, otherwise - false
    */
-  private boolean isValidTopicName(String topicName) {
+  public static boolean isValidTopicName(String topicName) {
     Pattern pattern = Pattern.compile("[^#+\\u0000]+$");
     Matcher matcher = pattern.matcher(topicName);
 
@@ -780,8 +785,8 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
    * @param topicFilter given Topic Filter
    * @return true - valid, otherwise - false
    */
-  private boolean isValidTopicFilter(String topicFilter) {
-    Pattern pattern = Pattern.compile("^\\+(?![^/])([^#+]*(/\\+(?![^/]))*)*(#)?$");
+  public static boolean isValidTopicFilter(String topicFilter) {
+    Pattern pattern = Pattern.compile("^(\\+(?![^/]))?([^#+]*(/\\+(?![^/]))?)*(#)?$");
     Matcher matcher = pattern.matcher(topicFilter);
 
     return matcher.find();
