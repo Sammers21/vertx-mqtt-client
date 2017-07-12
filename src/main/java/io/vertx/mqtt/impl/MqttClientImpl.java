@@ -26,6 +26,7 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.DecoderResult;
 import io.netty.handler.codec.mqtt.*;
 import io.netty.handler.codec.mqtt.MqttTopicSubscription;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -36,6 +37,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.impl.ContextImpl;
 import io.vertx.core.impl.VertxInternal;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.impl.ConnectionBase;
 import io.vertx.core.net.impl.NetClientBase;
 import io.vertx.core.net.impl.SSLHelper;
@@ -46,17 +49,13 @@ import io.vertx.mqtt.MqttConnAckMessage;
 import io.vertx.mqtt.MqttSubAckMessage;
 import io.vertx.mqtt.messages.MqttPublishMessage;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 import static io.netty.handler.codec.mqtt.MqttQoS.*;
-import io.netty.handler.logging.LoggingHandler;
 
 /**
  * MQTT client implementation
@@ -215,6 +214,11 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
   @Override
   public MqttClient publish(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain, Handler<AsyncResult<Integer>> publishSentHandler) {
 
+    if (!isValidTopicName(topic)) {
+      log.warn("Invalid Topic Name. It mustn't contains wildcards: # and +. Also it can't contains U+0000(NULL) chars");
+      return this;
+    }
+
     MqttFixedHeader fixedHeader = new MqttFixedHeader(
       MqttMessageType.PUBLISH,
       isDup,
@@ -297,6 +301,17 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
    */
   @Override
   public MqttClient subscribe(Map<String, Integer> topics, Handler<AsyncResult<Integer>> subscribeSentHandler) {
+
+    Optional<String> reduce = topics.entrySet()
+      .stream()
+      .filter(s -> !isValidTopicFilter(s.getKey()))
+      .map(Map.Entry::getKey)
+      .reduce((one, another) -> one + ", " + another);
+
+    if (reduce.isPresent()) {
+      log.warn("Invalid Topic Filters: " + reduce.get());
+      return this;
+    }
 
     MqttFixedHeader fixedHeader = new MqttFixedHeader(
       MqttMessageType.SUBSCRIBE,
@@ -742,5 +757,29 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
    */
   private String generateRandomClientId() {
     return UUID.randomUUID().toString();
+  }
+
+  /**
+   * Check either given Topic Name valid of not
+   * @param topicName given Topic Name
+   * @return true - valid, otherwise - false
+   */
+  private boolean isValidTopicName(String topicName) {
+    Pattern pattern = Pattern.compile("[^#+\\u0000]+$");
+    Matcher matcher = pattern.matcher(topicName);
+
+    return matcher.find();
+  }
+
+  /**
+   *  Check either given Topic Filter valid of not
+   * @param topicFilter given Topic Filter
+   * @return true - valid, otherwise - false
+   */
+  private boolean isValidTopicFilter(String topicFilter) {
+    Pattern pattern = Pattern.compile("^\\+(?![^/])([^#+]*(/\\+(?![^/]))*)*(#)?$");
+    Matcher matcher = pattern.matcher(topicFilter);
+
+    return matcher.find();
   }
 }
