@@ -216,7 +216,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
 
     if (!isValidTopicName(topic)) {
       String msg = String.format("Invalid Topic Name - %s. It mustn't contains wildcards: # and +. Also it can't contains U+0000(NULL) chars", topic);
-      log.warn(msg);
+      log.error(msg);
       if (publishSentHandler != null) {
         publishSentHandler.handle(Future.failedFuture(msg));
       }
@@ -314,7 +314,7 @@ public class MqttClientImpl extends NetClientBase<MqttClientConnection> implemen
 
     if (reduce.isPresent()) {
       String msg = String.format("Invalid Topic Filters: %s", reduce.get());
-      log.warn(msg);
+      log.error(msg);
       if (subscribeSentHandler != null) {
         subscribeSentHandler.handle(Future.failedFuture(msg));
       }
