@@ -16,14 +16,15 @@
 
 package io.vertx.mqtt.impl;
 
-import io.netty.channel.Channel;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.DecoderResult;
+import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
-import io.vertx.core.impl.ContextImpl;
-import io.vertx.core.impl.VertxInternal;
-import io.vertx.core.net.impl.ConnectionBase;
-import io.vertx.core.spi.metrics.NetworkMetrics;
-import io.vertx.core.spi.metrics.TCPMetrics;
+import io.vertx.core.impl.NetSocketInternal;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.net.impl.VertxHandler;
 import io.vertx.mqtt.MqttClientOptions;
 import io.vertx.mqtt.MqttConnAckMessage;
 import io.vertx.mqtt.MqttSubAckMessage;
@@ -32,37 +33,20 @@ import io.vertx.mqtt.messages.MqttPublishMessage;
 /**
  * Represents an MQTT connection with a remote server
  */
-public class MqttClientConnection extends ConnectionBase {
+public class MqttClientConnection {
 
-  private TCPMetrics metrics;
+  private static final Logger log = LoggerFactory.getLogger(MqttClientConnection.class);
+
+  private final NetSocketInternal so;
+  private final ChannelHandlerContext chctx;
   private MqttClientOptions options;
   private MqttClientImpl client;
 
-  /**
-   * Constructor
-   *
-   * @param vertx Vert.x instance
-   * @param channel Channel (netty) used for communication with the MQTT remote server
-   * @param context Vert.x context
-   * @param metrics TCP metrics
-   * @param options MQTT client options
-   * @param currentState  MQTT client instance
-   */
-  MqttClientConnection(VertxInternal vertx, Channel channel, ContextImpl context, TCPMetrics metrics,
-                       MqttClientOptions options, MqttClientImpl currentState) {
-    super(vertx, channel, context);
-    this.metrics = metrics;
+  MqttClientConnection(MqttClientImpl client, NetSocketInternal so, MqttClientOptions options) {
+    this.so = so;
+    this.chctx = so.channelHandlerContext();
+    this.client = client;
     this.options = options;
-    this.client = currentState;
-  }
-
-  @Override
-  public NetworkMetrics metrics() {
-    return metrics;
-  }
-
-  @Override
-  protected void handleInterestedOpsChanged() {
   }
 
   /**
@@ -72,23 +56,49 @@ public class MqttClientConnection extends ConnectionBase {
    */
   synchronized void handleMessage(Object msg) {
 
-    // handling directly native Netty MQTT messages because we don't need to
-    // expose them at higher level (so no need for polyglotization)
+    // handling directly native Netty MQTT messages, some of them are translated
+    // to the related Vert.x ones for polyglotization
     if (msg instanceof io.netty.handler.codec.mqtt.MqttMessage) {
 
       io.netty.handler.codec.mqtt.MqttMessage mqttMessage = (io.netty.handler.codec.mqtt.MqttMessage) msg;
 
       DecoderResult result = mqttMessage.decoderResult();
       if (result.isFailure()) {
-        channel.pipeline().fireExceptionCaught(result.cause());
+        chctx.pipeline().fireExceptionCaught(result.cause());
         return;
       }
       if (!result.isFinished()) {
-        channel.pipeline().fireExceptionCaught(new Exception("Unfinished message"));
+        chctx.pipeline().fireExceptionCaught(new Exception("Unfinished message"));
         return;
       }
 
+      log.debug(String.format("Incoming packet %s", msg));
       switch (mqttMessage.fixedHeader().messageType()) {
+
+        case CONNACK:
+
+          io.netty.handler.codec.mqtt.MqttConnAckMessage connack = (io.netty.handler.codec.mqtt.MqttConnAckMessage) mqttMessage;
+
+          MqttConnAckMessage mqttConnAckMessage = MqttConnAckMessage.create(
+            connack.variableHeader().connectReturnCode(),
+            connack.variableHeader().isSessionPresent());
+          handleConnack(mqttConnAckMessage);
+          break;
+
+        case PUBLISH:
+
+          io.netty.handler.codec.mqtt.MqttPublishMessage publish = (io.netty.handler.codec.mqtt.MqttPublishMessage) mqttMessage;
+          ByteBuf newBuf = VertxHandler.safeBuffer(publish.payload(), chctx.alloc());
+
+          MqttPublishMessage mqttPublishMessage = MqttPublishMessage.create(
+            publish.variableHeader().messageId(),
+            publish.fixedHeader().qosLevel(),
+            publish.fixedHeader().isDup(),
+            publish.fixedHeader().isRetain(),
+            publish.variableHeader().topicName(),
+            newBuf);
+          handlePublish(mqttPublishMessage);
+          break;
 
         case PUBACK:
           handlePuback(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId());
@@ -106,6 +116,16 @@ public class MqttClientConnection extends ConnectionBase {
           handlePubcomp(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId());
           break;
 
+        case SUBACK:
+
+          io.netty.handler.codec.mqtt.MqttSubAckMessage unsuback = (io.netty.handler.codec.mqtt.MqttSubAckMessage) mqttMessage;
+
+          MqttSubAckMessage mqttSubAckMessage = MqttSubAckMessage.create(
+            unsuback.variableHeader().messageId(),
+            unsuback.payload().grantedQoSLevels());
+          handleSuback(mqttSubAckMessage);
+          break;
+
         case UNSUBACK:
           handleUnsuback(((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId());
           break;
@@ -116,30 +136,13 @@ public class MqttClientConnection extends ConnectionBase {
 
         default:
 
-          this.channel.pipeline().fireExceptionCaught(new Exception("Wrong message type " + msg.getClass().getName()));
+          this.chctx.pipeline().fireExceptionCaught(new Exception("Wrong message type " + msg.getClass().getName()));
           break;
       }
 
-      // handling mapped Vert.x MQTT messages (from Netty ones) because they'll be provided
-      // to the higher layer (so need for ployglotization)
     } else {
 
-      if (msg instanceof MqttConnAckMessage) {
-
-        handleConnack((MqttConnAckMessage) msg);
-
-      } else if (msg instanceof MqttSubAckMessage) {
-
-        handleSuback((MqttSubAckMessage) msg);
-
-      } else if (msg instanceof MqttPublishMessage) {
-
-        handlePublish((MqttPublishMessage) msg);
-
-      } else {
-
-        this.channel.pipeline().fireExceptionCaught(new Exception("Wrong message type"));
-      }
+      this.chctx.pipeline().fireExceptionCaught(new Exception("Wrong message type"));
     }
   }
 
@@ -220,5 +223,20 @@ public class MqttClientConnection extends ConnectionBase {
    */
   synchronized private void handleConnack(MqttConnAckMessage msg) {
     this.client.handleConnack(msg);
+  }
+
+  /**
+   * Close the NetSocket
+   */
+  void close(){
+    so.close();
+  }
+
+  /**
+   * Write the message to socket
+   * @param mqttMessage message
+   */
+  void writeMessage(MqttMessage mqttMessage) {
+    so.writeMessage(mqttMessage);
   }
 }

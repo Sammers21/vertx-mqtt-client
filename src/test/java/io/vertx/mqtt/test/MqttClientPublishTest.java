@@ -19,6 +19,8 @@ package io.vertx.mqtt.test;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -30,8 +32,13 @@ import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertTrue;
 
+/**
+ * MQTT client testing on publishing messages
+ */
 @RunWith(VertxUnitRunner.class)
 public class MqttClientPublishTest {
+
+  private static final Logger log = LoggerFactory.getLogger(MqttClientPublishTest.class);
 
   private static final String MQTT_TOPIC = "/my_topic";
   private static final String MQTT_MESSAGE = "Hello Vert.x MQTT Client";
@@ -58,6 +65,7 @@ public class MqttClientPublishTest {
 
     client.publishCompleteHandler(pubid -> {
       assertTrue(pubid == messageId);
+      log.info("publishing complete for message id = " + pubid);
       client.disconnect();
       async.countDown();
     });
@@ -75,6 +83,7 @@ public class MqttClientPublishTest {
         ar1 -> {
           assertTrue(ar.succeeded());
           messageId = ar1.result();
+          log.info("publishing message id = " + messageId);
         }
       );
     });

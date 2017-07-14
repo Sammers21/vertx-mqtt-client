@@ -17,6 +17,8 @@
 package io.vertx.mqtt.test;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -32,8 +34,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * MQTT client testing on client identifier
+ */
 @RunWith(VertxUnitRunner.class)
 public class MqttClientIdTest {
+
+  private static final Logger log = LoggerFactory.getLogger(MqttClientIdTest.class);
 
   @Test
   public void afterConnectClientIdGenerated(TestContext context) throws InterruptedException {
@@ -51,6 +58,8 @@ public class MqttClientIdTest {
       assertTrue(client.clientId().length() == 36);
       assertThat(client.clientId(), notNullValue());
       assertFalse(client.clientId().isEmpty());
+
+      log.info("Client connected with generated client id = " + client.clientId());
 
       async.countDown();
     });
@@ -72,6 +81,8 @@ public class MqttClientIdTest {
       assertThat(client.clientId(), notNullValue());
       assertFalse(client.clientId().isEmpty());
       assertEquals(client.clientId(), "myClient");
+
+      log.info("Client connected with requested client id = " + client.clientId());
 
       async.countDown();
     });

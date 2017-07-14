@@ -19,6 +19,8 @@ package io.vertx.mqtt.test;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -28,10 +30,17 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.nio.charset.Charset;
+
 import static org.junit.Assert.assertTrue;
 
+/**
+ * MQTT client testing on subscribing topics
+ */
 @RunWith(VertxUnitRunner.class)
 public class MqttClientSubscribeTest {
+
+  private static final Logger log = LoggerFactory.getLogger(MqttClientSubscribeTest.class);
 
   private static final String MQTT_TOPIC = "/my_topic";
   private static final String MQTT_MESSAGE = "Hello Vert.x MQTT Client";
@@ -76,6 +85,7 @@ public class MqttClientSubscribeTest {
 
     client.publishHandler(publish -> {
         assertTrue(publish.qosLevel() == qos);
+        log.info("Just received message on [" + publish.topicName() + "] payload [" + publish.payload().toString(Charset.defaultCharset()) + "] with QoS [" + publish.qosLevel() + "]");
         client.disconnect();
         async.countDown();
       });
@@ -106,6 +116,7 @@ public class MqttClientSubscribeTest {
     client.subscribeCompleteHandler(suback -> {
       assertTrue(suback.messageId() == messageId);
       assertTrue(suback.grantedQoSLevels().contains(qos.value()));
+      log.info("subscribing complete for message id = " + suback.messageId() + " with QoS " + suback.grantedQoSLevels());
       client.disconnect();
       async.countDown();
     });
@@ -116,6 +127,7 @@ public class MqttClientSubscribeTest {
       client.subscribe(MQTT_TOPIC, qos.value(), done -> {
         assertTrue(done.succeeded());
         messageId = done.result();
+        log.info("subscribing on [" + MQTT_TOPIC + "] with QoS [" + qos.value() + "] message id = " + messageId);
       });
     });
 
