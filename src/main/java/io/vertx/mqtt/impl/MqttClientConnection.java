@@ -16,14 +16,11 @@
 
 package io.vertx.mqtt.impl;
 
-import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.DecoderResult;
+import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
-import io.vertx.core.impl.ContextImpl;
-import io.vertx.core.impl.VertxInternal;
-import io.vertx.core.net.impl.ConnectionBase;
-import io.vertx.core.spi.metrics.NetworkMetrics;
-import io.vertx.core.spi.metrics.TCPMetrics;
+import io.vertx.core.impl.NetSocketInternal;
 import io.vertx.mqtt.MqttClientOptions;
 import io.vertx.mqtt.MqttConnAckMessage;
 import io.vertx.mqtt.MqttSubAckMessage;
@@ -32,37 +29,18 @@ import io.vertx.mqtt.messages.MqttPublishMessage;
 /**
  * Represents an MQTT connection with a remote server
  */
-public class MqttClientConnection extends ConnectionBase {
+public class MqttClientConnection {
 
-  private TCPMetrics metrics;
+  private final NetSocketInternal so;
+  private final ChannelHandlerContext chctx;
   private MqttClientOptions options;
   private MqttClientImpl client;
 
-  /**
-   * Constructor
-   *
-   * @param vertx Vert.x instance
-   * @param channel Channel (netty) used for communication with the MQTT remote server
-   * @param context Vert.x context
-   * @param metrics TCP metrics
-   * @param options MQTT client options
-   * @param currentState  MQTT client instance
-   */
-  MqttClientConnection(VertxInternal vertx, Channel channel, ContextImpl context, TCPMetrics metrics,
-                       MqttClientOptions options, MqttClientImpl currentState) {
-    super(vertx, channel, context);
-    this.metrics = metrics;
+  MqttClientConnection(MqttClientImpl client, NetSocketInternal so, MqttClientOptions options) {
+    this.so = so;
+    this.chctx = so.channelHandlerContext();
+    this.client = client;
     this.options = options;
-    this.client = currentState;
-  }
-
-  @Override
-  public NetworkMetrics metrics() {
-    return metrics;
-  }
-
-  @Override
-  protected void handleInterestedOpsChanged() {
   }
 
   /**
@@ -80,11 +58,11 @@ public class MqttClientConnection extends ConnectionBase {
 
       DecoderResult result = mqttMessage.decoderResult();
       if (result.isFailure()) {
-        channel.pipeline().fireExceptionCaught(result.cause());
+        chctx.pipeline().fireExceptionCaught(result.cause());
         return;
       }
       if (!result.isFinished()) {
-        channel.pipeline().fireExceptionCaught(new Exception("Unfinished message"));
+        chctx.pipeline().fireExceptionCaught(new Exception("Unfinished message"));
         return;
       }
 
@@ -116,7 +94,7 @@ public class MqttClientConnection extends ConnectionBase {
 
         default:
 
-          this.channel.pipeline().fireExceptionCaught(new Exception("Wrong message type " + msg.getClass().getName()));
+          this.chctx.pipeline().fireExceptionCaught(new Exception("Wrong message type " + msg.getClass().getName()));
           break;
       }
 
@@ -138,7 +116,7 @@ public class MqttClientConnection extends ConnectionBase {
 
       } else {
 
-        this.channel.pipeline().fireExceptionCaught(new Exception("Wrong message type"));
+        this.chctx.pipeline().fireExceptionCaught(new Exception("Wrong message type"));
       }
     }
   }
@@ -220,5 +198,20 @@ public class MqttClientConnection extends ConnectionBase {
    */
   synchronized private void handleConnack(MqttConnAckMessage msg) {
     this.client.handleConnack(msg);
+  }
+
+  /**
+   * Close the NetSocket
+   */
+  void close(){
+    so.close();
+  }
+
+  /**
+   * Write the message to socket
+   * @param mqttMessage message
+   */
+  void writeMessage(MqttMessage mqttMessage) {
+    so.writeMessage(mqttMessage);
   }
 }
