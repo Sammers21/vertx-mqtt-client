@@ -27,6 +27,9 @@ import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertTrue;
 
+/**
+ * MQTT client testing about connection
+ */
 @RunWith(VertxUnitRunner.class)
 public class MqttClientConnectTest {
 
