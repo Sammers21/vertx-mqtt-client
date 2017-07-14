@@ -17,14 +17,24 @@
 package io.vertx.mqtt.impl;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
-import io.netty.handler.codec.DecoderResult;
-import io.netty.handler.codec.mqtt.*;
+import io.netty.handler.codec.mqtt.MqttConnectPayload;
+import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
+import io.netty.handler.codec.mqtt.MqttConnectVariableHeader;
+import io.netty.handler.codec.mqtt.MqttDecoder;
+import io.netty.handler.codec.mqtt.MqttEncoder;
+import io.netty.handler.codec.mqtt.MqttFixedHeader;
+import io.netty.handler.codec.mqtt.MqttMessageFactory;
+import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
+import io.netty.handler.codec.mqtt.MqttMessageType;
+import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
+import io.netty.handler.codec.mqtt.MqttQoS;
+import io.netty.handler.codec.mqtt.MqttSubscribePayload;
 import io.netty.handler.codec.mqtt.MqttTopicSubscription;
+import io.netty.handler.codec.mqtt.MqttUnsubscribePayload;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -37,9 +47,10 @@ import io.vertx.core.impl.NetSocketInternal;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.NetClient;
-import io.vertx.core.net.impl.VertxHandler;
-import io.vertx.mqtt.*;
+import io.vertx.mqtt.MqttClient;
+import io.vertx.mqtt.MqttClientOptions;
 import io.vertx.mqtt.MqttConnAckMessage;
+import io.vertx.mqtt.MqttConnectionException;
 import io.vertx.mqtt.MqttSubAckMessage;
 import io.vertx.mqtt.messages.MqttPublishMessage;
 
@@ -131,7 +142,7 @@ public class MqttClientImpl implements MqttClient {
         initChannel(pipeline);
         this.connection = new MqttClientConnection(this, soi, options);
 
-        soi.messageHandler(msg -> connection.handleMessage(safeObject(msg, soi.channelHandlerContext().alloc())));
+        soi.messageHandler(msg -> connection.handleMessage(msg));
 
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.CONNECT,
           false,
@@ -497,56 +508,6 @@ public class MqttClientImpl implements MqttClient {
         }
       });
     }
-  }
-
-  private Object safeObject(Object msg, ByteBufAllocator allocator) {
-
-    // some Netty native MQTT messages need a mapping to Vert.x ones (available for polyglotization)
-    // and different byte buffer resources are allocated
-    if (msg instanceof io.netty.handler.codec.mqtt.MqttMessage) {
-
-      io.netty.handler.codec.mqtt.MqttMessage mqttMessage = (io.netty.handler.codec.mqtt.MqttMessage) msg;
-      DecoderResult result = mqttMessage.decoderResult();
-      if (result.isSuccess() && result.isFinished()) {
-
-        log.debug(String.format("Incoming packet %s", msg));
-        switch (mqttMessage.fixedHeader().messageType()) {
-
-          case CONNACK:
-
-            io.netty.handler.codec.mqtt.MqttConnAckMessage connack = (io.netty.handler.codec.mqtt.MqttConnAckMessage) mqttMessage;
-
-            return MqttConnAckMessage.create(
-              connack.variableHeader().connectReturnCode(),
-              connack.variableHeader().isSessionPresent());
-
-          case SUBACK:
-
-            io.netty.handler.codec.mqtt.MqttSubAckMessage unsuback = (io.netty.handler.codec.mqtt.MqttSubAckMessage) mqttMessage;
-
-            return MqttSubAckMessage.create(
-              unsuback.variableHeader().messageId(),
-              unsuback.payload().grantedQoSLevels());
-
-          case PUBLISH:
-
-            io.netty.handler.codec.mqtt.MqttPublishMessage publish = (io.netty.handler.codec.mqtt.MqttPublishMessage) mqttMessage;
-            ByteBuf newBuf = VertxHandler.safeBuffer(publish.payload(), allocator);
-
-            return MqttPublishMessage.create(
-              publish.variableHeader().messageId(),
-              publish.fixedHeader().qosLevel(),
-              publish.fixedHeader().isDup(),
-              publish.fixedHeader().isRetain(),
-              publish.variableHeader().topicName(),
-              newBuf);
-        }
-      }
-
-    }
-
-    // otherwise the original Netty message is returned
-    return msg;
   }
 
   /**
