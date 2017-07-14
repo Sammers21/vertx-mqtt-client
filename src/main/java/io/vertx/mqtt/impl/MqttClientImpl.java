@@ -475,8 +475,8 @@ public class MqttClientImpl implements MqttClient {
   private void initChannel(ChannelPipeline pipeline) {
 
     // add into pipeline netty's (en/de)coder
-    pipeline.addLast( "mqttEncoder", MqttEncoder.INSTANCE);
-    pipeline.addLast( "mqttDecoder", new MqttDecoder());
+    pipeline.addBefore("handler", "mqttEncoder", MqttEncoder.INSTANCE);
+    pipeline.addBefore("handler", "mqttDecoder", new MqttDecoder());
 
     if (this.options.isAutoKeepAlive() &&
       this.options.getKeepAliveTimeSeconds() != 0) {
