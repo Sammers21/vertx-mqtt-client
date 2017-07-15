@@ -79,6 +79,10 @@ public class MqttClientImpl implements MqttClient {
   // counter for the message identifier
   private int messageIdCounter;
 
+  // patterns for validation of topics validation
+  private Pattern validTopicNamePattern = Pattern.compile("^[^#+\\u0000]+$");
+  private Pattern validTopicFilterPattern = Pattern.compile("^(\\+(?![^/]))?([^#+]*(/\\+(?![^/]))?)*(#)?$");
+
   /**
    * Constructor
    *
@@ -699,24 +703,23 @@ public class MqttClientImpl implements MqttClient {
 
   /**
    * Check either given Topic Name valid of not
+   *
    * @param topicName given Topic Name
    * @return true - valid, otherwise - false
    */
-  public static boolean isValidTopicName(String topicName) {
-    Pattern pattern = Pattern.compile("[^#+\\u0000]+$");
-    Matcher matcher = pattern.matcher(topicName);
-
+  public boolean isValidTopicName(String topicName) {
+    Matcher matcher = validTopicNamePattern.matcher(topicName);
     return matcher.find();
   }
 
   /**
-   *  Check either given Topic Filter valid of not
+   * Check either given Topic Filter valid of not
+   *
    * @param topicFilter given Topic Filter
    * @return true - valid, otherwise - false
    */
-  public static boolean isValidTopicFilter(String topicFilter) {
-    Pattern pattern = Pattern.compile("^(\\+(?![^/]))?([^#+]*(/\\+(?![^/]))?)*(#)?$");
-    Matcher matcher = pattern.matcher(topicFilter);
+  public boolean isValidTopicFilter(String topicFilter) {
+    Matcher matcher = validTopicFilterPattern.matcher(topicFilter);
 
     return matcher.find();
   }
