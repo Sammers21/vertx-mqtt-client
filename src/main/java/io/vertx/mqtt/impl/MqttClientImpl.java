@@ -79,7 +79,7 @@ public class MqttClientImpl implements MqttClient {
   // counter for the message identifier
   private int messageIdCounter;
 
-  // patterns for validation of topics validation
+  // patterns for topics validation
   private Pattern validTopicNamePattern = Pattern.compile("^[^#+\\u0000]+$");
   private Pattern validTopicFilterPattern = Pattern.compile("^(\\+(?![^/]))?([^#+]*(/\\+(?![^/]))?)*(#)?$");
 
