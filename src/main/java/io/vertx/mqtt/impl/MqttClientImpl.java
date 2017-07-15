@@ -707,7 +707,7 @@ public class MqttClientImpl implements MqttClient {
    * @param topicName given Topic Name
    * @return true - valid, otherwise - false
    */
-  public boolean isValidTopicName(String topicName) {
+  private boolean isValidTopicName(String topicName) {
     Matcher matcher = validTopicNamePattern.matcher(topicName);
     return matcher.find();
   }
@@ -718,7 +718,7 @@ public class MqttClientImpl implements MqttClient {
    * @param topicFilter given Topic Filter
    * @return true - valid, otherwise - false
    */
-  public boolean isValidTopicFilter(String topicFilter) {
+  private boolean isValidTopicFilter(String topicFilter) {
     Matcher matcher = validTopicFilterPattern.matcher(topicFilter);
 
     return matcher.find();
