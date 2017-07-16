@@ -40,6 +40,7 @@ import io.vertx.mqtt.MqttConnAckMessage;
 import io.vertx.mqtt.MqttSubAckMessage;
 import io.vertx.mqtt.messages.MqttPublishMessage;
 
+import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -81,7 +82,7 @@ public class MqttClientImpl implements MqttClient {
 
   // patterns for topics validation
   private Pattern validTopicNamePattern = Pattern.compile("^[^#+\\u0000]+$");
-  private Pattern validTopicFilterPattern = Pattern.compile("^(\\+(?![^/]))?([^#+]*(/\\+(?![^/]))?)*(#)?$");
+  private Pattern validTopicFilterPattern = Pattern.compile("^(#|((\\+(?![^/]))?([^#+]*(/\\+(?![^/]))?)*(/#)?))$");
 
   /**
    * Constructor
@@ -707,6 +708,10 @@ public class MqttClientImpl implements MqttClient {
    * @return true - valid, otherwise - false
    */
   private boolean isValidTopicName(String topicName) {
+    if(!isValidStringSizeInUTF8(topicName)){
+      return false;
+    }
+
     Matcher matcher = validTopicNamePattern.matcher(topicName);
     return matcher.find();
   }
@@ -718,7 +723,26 @@ public class MqttClientImpl implements MqttClient {
    * @return true - valid, otherwise - false
    */
   private boolean isValidTopicFilter(String topicFilter) {
+    if(!isValidStringSizeInUTF8(topicFilter)){
+      return false;
+    }
+
     Matcher matcher = validTopicFilterPattern.matcher(topicFilter);
     return matcher.find();
+  }
+
+  /**
+   * Check either given string has size more then 65535 bytes in UTF-8 Encoding
+   * @param string given string
+   * @return true - size is lower or equal than 65535, otherwise - false
+   */
+  private boolean isValidStringSizeInUTF8(String string) {
+    try {
+      return string.getBytes("UTF-8").length <= 65535;
+    } catch (UnsupportedEncodingException e) {
+      log.error("UTF-8 charset is not supported", e);
+    }
+
+    return false;
   }
 }
