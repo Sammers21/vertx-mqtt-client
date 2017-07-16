@@ -26,13 +26,14 @@ public class MqttClientTopicValidationTest {
 
   private static final Logger log = LoggerFactory.getLogger(MqttClientTopicValidationTest.class);
   private static final String MQTT_MESSAGE = "Hello Vert.x MQTT Client";
+  private static final int MAX_TOPIC_NAME_SIZE = 65535;
 
-  private static final String utf65535bytes = IntStream.range(0, 65535)
+  private static final String utf65535bytes = IntStream.range(0, MAX_TOPIC_NAME_SIZE)
     .mapToObj(i -> "h")
     .reduce((one, another) -> one + another)
     .get();
 
-  private static final String utf65536bytes = IntStream.range(0, 65536)
+  private static final String utf65536bytes = IntStream.range(0, MAX_TOPIC_NAME_SIZE + 1)
     .mapToObj(i -> "h")
     .reduce((one, another) -> one + another)
     .get();
