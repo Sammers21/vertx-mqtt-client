@@ -308,14 +308,13 @@ public class MqttClientImpl implements MqttClient {
   @Override
   public MqttClient subscribe(Map<String, Integer> topics, Handler<AsyncResult<Integer>> subscribeSentHandler) {
 
-    Optional<String> reduce = topics.entrySet()
+    Map<String, Integer> topicAndQosPairs = topics.entrySet()
       .stream()
-      .filter(s -> !isValidTopicFilter(s.getKey()))
-      .map(Map.Entry::getKey)
-      .reduce((one, another) -> one + ", " + another);
+      .filter(e -> !isValidTopicFilter(e.getKey()))
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    if (reduce.isPresent()) {
-      String msg = String.format("Invalid Topic Filters: %s", reduce.get());
+    if (topicAndQosPairs.size() > 0) {
+      String msg = String.format("Invalid Topic Filters: %s", topicAndQosPairs);
       log.error(msg);
       if (subscribeSentHandler != null) {
         subscribeSentHandler.handle(Future.failedFuture(msg));
@@ -720,7 +719,6 @@ public class MqttClientImpl implements MqttClient {
    */
   private boolean isValidTopicFilter(String topicFilter) {
     Matcher matcher = validTopicFilterPattern.matcher(topicFilter);
-
     return matcher.find();
   }
 }
