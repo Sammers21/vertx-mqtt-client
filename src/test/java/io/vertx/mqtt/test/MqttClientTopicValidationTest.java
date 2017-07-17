@@ -15,7 +15,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.stream.IntStream;
 
 import static org.hamcrest.core.Is.is;
@@ -26,18 +26,21 @@ public class MqttClientTopicValidationTest {
 
   private static final Logger log = LoggerFactory.getLogger(MqttClientTopicValidationTest.class);
   private static final String MQTT_MESSAGE = "Hello Vert.x MQTT Client";
-  private static final int MAX_TOPIC_NAME_SIZE = 65535;
+  private static final int MAX_TOPIC_LEN = 65535;
 
-  private static final String utf65535bytes = IntStream.range(0, MAX_TOPIC_NAME_SIZE)
-    .mapToObj(i -> "h")
-    .reduce((one, another) -> one + another)
-    .get();
+  private static final String utf65535bytes;
 
-  private static final String utf65536bytes = IntStream.range(0, MAX_TOPIC_NAME_SIZE + 1)
-    .mapToObj(i -> "h")
-    .reduce((one, another) -> one + another)
-    .get();
+  private static final String utf65536bytes;
 
+  static {
+    char[] topic = new char[MAX_TOPIC_LEN];
+    Arrays.fill(topic, 'h');
+    utf65535bytes = new String(topic);
+
+    topic = new char[MAX_TOPIC_LEN + 1];
+    Arrays.fill(topic, 'h');
+    utf65536bytes = new String(topic);
+  }
 
 
   @Test
