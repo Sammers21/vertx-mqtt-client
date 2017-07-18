@@ -33,13 +33,10 @@ public class MqttClientTopicValidationTest {
   private static final String utf65536bytes;
 
   static {
-    char[] topic = new char[MAX_TOPIC_LEN];
-    Arrays.fill(topic, 'h');
-    utf65535bytes = new String(topic);
-
-    topic = new char[MAX_TOPIC_LEN + 1];
+    char[] topic = new char[MAX_TOPIC_LEN + 1];
     Arrays.fill(topic, 'h');
     utf65536bytes = new String(topic);
+    utf65535bytes = new String(topic, 0, MAX_TOPIC_LEN);
   }
 
 

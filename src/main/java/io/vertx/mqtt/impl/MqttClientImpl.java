@@ -58,6 +58,7 @@ public class MqttClientImpl implements MqttClient {
 
   private static final int MAX_MESSAGE_ID = 65535;
   private static final int MAX_TOPIC_SIZE = 65535;
+  private static final int MIN_TOPIC_SIZE = 1;
   private static final String PROTOCOL_NAME = "MQTT";
   private static final int PROTOCOL_VERSION = 4;
 
@@ -740,7 +741,7 @@ public class MqttClientImpl implements MqttClient {
   private boolean isValidStringSizeInUTF8(String string) {
     try {
       int length = string.getBytes("UTF-8").length;
-      return 1 <= length && length <= MAX_TOPIC_SIZE;
+      return length >= MIN_TOPIC_SIZE && length <= MAX_TOPIC_SIZE;
     } catch (UnsupportedEncodingException e) {
       log.error("UTF-8 charset is not supported", e);
     }
