@@ -40,8 +40,11 @@ import io.vertx.mqtt.MqttConnAckMessage;
 import io.vertx.mqtt.MqttSubAckMessage;
 import io.vertx.mqtt.messages.MqttPublishMessage;
 
+import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -55,6 +58,8 @@ public class MqttClientImpl implements MqttClient {
   private static final Logger log = LoggerFactory.getLogger(MqttClientImpl.class);
 
   private static final int MAX_MESSAGE_ID = 65535;
+  private static final int MAX_TOPIC_LEN = 65535;
+  private static final int MIN_TOPIC_LEN = 1;
   private static final String PROTOCOL_NAME = "MQTT";
   private static final int PROTOCOL_VERSION = 4;
 
@@ -88,6 +93,10 @@ public class MqttClientImpl implements MqttClient {
 
   // counter for the message identifier
   private int messageIdCounter;
+
+  // patterns for topics validation
+  private Pattern validTopicNamePattern = Pattern.compile("^[^#+\\u0000]+$");
+  private Pattern validTopicFilterPattern = Pattern.compile("^(#|((\\+(?![^/]))?([^#+]*(/\\+(?![^/]))?)*(/#)?))$");
 
   /**
    * Constructor
@@ -222,6 +231,15 @@ public class MqttClientImpl implements MqttClient {
   @Override
   public MqttClient publish(String topic, Buffer payload, MqttQoS qosLevel, boolean isDup, boolean isRetain, Handler<AsyncResult<Integer>> publishSentHandler) {
 
+    if (!isValidTopicName(topic)) {
+      String msg = String.format("Invalid Topic Name - %s. It mustn't contains wildcards: # and +. Also it can't contains U+0000(NULL) chars", topic);
+      log.error(msg);
+      if (publishSentHandler != null) {
+        publishSentHandler.handle(Future.failedFuture(msg));
+      }
+      return this;
+    }
+
     MqttFixedHeader fixedHeader = new MqttFixedHeader(
       MqttMessageType.PUBLISH,
       isDup,
@@ -313,6 +331,20 @@ public class MqttClientImpl implements MqttClient {
    */
   @Override
   public MqttClient subscribe(Map<String, Integer> topics, Handler<AsyncResult<Integer>> subscribeSentHandler) {
+
+    Map<String, Integer> invalidTopics = topics.entrySet()
+      .stream()
+      .filter(e -> !isValidTopicFilter(e.getKey()))
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    if (invalidTopics.size() > 0) {
+      String msg = String.format("Invalid Topic Filters: %s", invalidTopics);
+      log.error(msg);
+      if (subscribeSentHandler != null) {
+        subscribeSentHandler.handle(Future.failedFuture(msg));
+      }
+      return this;
+    }
 
     MqttFixedHeader fixedHeader = new MqttFixedHeader(
       MqttMessageType.SUBSCRIBE,
@@ -708,5 +740,51 @@ public class MqttClientImpl implements MqttClient {
    */
   private String generateRandomClientId() {
     return UUID.randomUUID().toString();
+  }
+
+  /**
+   * Check either given Topic Name valid of not
+   *
+   * @param topicName given Topic Name
+   * @return true - valid, otherwise - false
+   */
+  private boolean isValidTopicName(String topicName) {
+    if(!isValidStringSizeInUTF8(topicName)){
+      return false;
+    }
+
+    Matcher matcher = validTopicNamePattern.matcher(topicName);
+    return matcher.find();
+  }
+
+  /**
+   * Check either given Topic Filter valid of not
+   *
+   * @param topicFilter given Topic Filter
+   * @return true - valid, otherwise - false
+   */
+  private boolean isValidTopicFilter(String topicFilter) {
+    if(!isValidStringSizeInUTF8(topicFilter)){
+      return false;
+    }
+
+    Matcher matcher = validTopicFilterPattern.matcher(topicFilter);
+    return matcher.find();
+  }
+
+  /**
+   * Check either given string has size more then 65535 bytes in UTF-8 Encoding
+   * @param string given string
+   * @return true - size is lower or equal than 65535, otherwise - false
+   */
+  private boolean isValidStringSizeInUTF8(String string) {
+    try {
+      int length = string.getBytes("UTF-8").length;
+      return length >= MIN_TOPIC_LEN && length <= MAX_TOPIC_LEN;
+    } catch (UnsupportedEncodingException e) {
+      log.error("UTF-8 charset is not supported", e);
+    }
+
+    return false;
   }
 }
