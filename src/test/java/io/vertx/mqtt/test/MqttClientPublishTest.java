@@ -61,7 +61,9 @@ public class MqttClientPublishTest {
     this.messageId = 0;
 
     Async async = context.async();
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+    MqttClient client = MqttClient.create(Vertx.vertx(),
+      new MqttClientOptions()
+        .setHost(TestUtil.BROKER_ADDRESS));
 
     client.publishCompleteHandler(pubid -> {
       assertTrue(pubid == messageId);

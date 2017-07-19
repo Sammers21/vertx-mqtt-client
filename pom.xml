@@ -108,8 +108,13 @@
   </licenses>
 
   <profiles>
+
+    <!-- Profile for testing local testing with docker -->
     <profile>
-      <id>testsing-with-docker</id>
+      <id>local_test</id>
+      <properties>
+        <SERVER>localhost</SERVER>
+      </properties>
       <build>
         <plugins>
           <plugin>
@@ -154,35 +159,22 @@
               </execution>
             </executions>
           </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <version>2.10</version>
-            <configuration>
-              <skip>true</skip>
-            </configuration>
-          </plugin>
-          <plugin>
-            <artifactId>maven-failsafe-plugin</artifactId>
-            <version>2.17</version>
-            <executions>
-              <execution>
-                <id>run-integration-test</id>
-                <goals>
-                  <goal>integration-test</goal>
-                </goals>
-              </execution>
-            </executions>
-            <configuration>
-              <includes>
-                <include>**/*Test.java</include>
-              </includes>
-            </configuration>
-          </plugin>
         </plugins>
       </build>
     </profile>
+
+    <!-- Profile for testing on CI server using broker provided by Eclipse-->
+    <profile>
+      <id>ci_test</id>
+      <properties>
+        <SERVER>iot.eclipse.org</SERVER>
+      </properties>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+    </profile>
   </profiles>
+
   <build>
     <plugins>
       <plugin>
@@ -192,6 +184,39 @@
         <configuration>
           <skip>true</skip>
         </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>2.17</version>
+        <executions>
+          <execution>
+            <id>run-integration-test</id>
+            <goals>
+              <goal>integration-test</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <includes>
+            <include>**/*Test.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>properties-maven-plugin</artifactId>
+        <version>1.0.0</version>
+        <executions>
+          <execution>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>write-project-properties</goal>
+            </goals>
+            <configuration>
+              <outputFile>target/project.properties</outputFile>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

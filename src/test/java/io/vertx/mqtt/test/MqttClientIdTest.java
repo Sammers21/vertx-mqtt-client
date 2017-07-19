@@ -47,7 +47,8 @@ public class MqttClientIdTest {
 
     Async async = context.async();
 
-    MqttClientOptions options = new MqttClientOptions();
+    MqttClientOptions options = new MqttClientOptions()
+      .setHost(TestUtil.BROKER_ADDRESS);
     MqttClient client = MqttClient.create(Vertx.vertx(), options);
 
     assertThat(options.getClientId(), nullValue());
