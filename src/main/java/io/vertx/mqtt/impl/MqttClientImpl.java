@@ -21,8 +21,20 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
-import io.netty.handler.codec.mqtt.*;
+import io.netty.handler.codec.mqtt.MqttConnectPayload;
+import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
+import io.netty.handler.codec.mqtt.MqttConnectVariableHeader;
+import io.netty.handler.codec.mqtt.MqttDecoder;
+import io.netty.handler.codec.mqtt.MqttEncoder;
+import io.netty.handler.codec.mqtt.MqttFixedHeader;
+import io.netty.handler.codec.mqtt.MqttMessageFactory;
+import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
+import io.netty.handler.codec.mqtt.MqttMessageType;
+import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
+import io.netty.handler.codec.mqtt.MqttQoS;
+import io.netty.handler.codec.mqtt.MqttSubscribePayload;
 import io.netty.handler.codec.mqtt.MqttTopicSubscription;
+import io.netty.handler.codec.mqtt.MqttUnsubscribePayload;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -35,13 +47,18 @@ import io.vertx.core.impl.NetSocketInternal;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.NetClient;
-import io.vertx.mqtt.*;
+import io.vertx.mqtt.MqttClient;
+import io.vertx.mqtt.MqttClientOptions;
 import io.vertx.mqtt.MqttConnAckMessage;
+import io.vertx.mqtt.MqttConnectionException;
 import io.vertx.mqtt.MqttSubAckMessage;
 import io.vertx.mqtt.messages.MqttPublishMessage;
 
 import java.io.UnsupportedEncodingException;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -57,8 +74,8 @@ public class MqttClientImpl implements MqttClient {
   private static final Logger log = LoggerFactory.getLogger(MqttClientImpl.class);
 
   private static final int MAX_MESSAGE_ID = 65535;
-  private static final int MAX_TOPIC_SIZE = 65535;
-  private static final int MIN_TOPIC_SIZE = 1;
+  private static final int MAX_TOPIC_LEN = 65535;
+  private static final int MIN_TOPIC_LEN = 1;
   private static final String PROTOCOL_NAME = "MQTT";
   private static final int PROTOCOL_VERSION = 4;
 
@@ -311,13 +328,13 @@ public class MqttClientImpl implements MqttClient {
   @Override
   public MqttClient subscribe(Map<String, Integer> topics, Handler<AsyncResult<Integer>> subscribeSentHandler) {
 
-    Map<String, Integer> topicAndQosPairs = topics.entrySet()
+    Map<String, Integer> invalidTopics = topics.entrySet()
       .stream()
       .filter(e -> !isValidTopicFilter(e.getKey()))
       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    if (topicAndQosPairs.size() > 0) {
-      String msg = String.format("Invalid Topic Filters: %s", topicAndQosPairs);
+    if (invalidTopics.size() > 0) {
+      String msg = String.format("Invalid Topic Filters: %s", invalidTopics);
       log.error(msg);
       if (subscribeSentHandler != null) {
         subscribeSentHandler.handle(Future.failedFuture(msg));
@@ -741,7 +758,7 @@ public class MqttClientImpl implements MqttClient {
   private boolean isValidStringSizeInUTF8(String string) {
     try {
       int length = string.getBytes("UTF-8").length;
-      return length >= MIN_TOPIC_SIZE && length <= MAX_TOPIC_SIZE;
+      return length >= MIN_TOPIC_LEN && length <= MAX_TOPIC_LEN;
     } catch (UnsupportedEncodingException e) {
       log.error("UTF-8 charset is not supported", e);
     }

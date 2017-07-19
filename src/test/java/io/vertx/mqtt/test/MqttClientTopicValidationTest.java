@@ -16,7 +16,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
-import java.util.stream.IntStream;
 
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
@@ -28,15 +27,14 @@ public class MqttClientTopicValidationTest {
   private static final String MQTT_MESSAGE = "Hello Vert.x MQTT Client";
   private static final int MAX_TOPIC_LEN = 65535;
 
-  private static final String utf65535bytes;
-
-  private static final String utf65536bytes;
+  private static final String goodTopic;
+  private static final String badTopic;
 
   static {
     char[] topic = new char[MAX_TOPIC_LEN + 1];
     Arrays.fill(topic, 'h');
-    utf65536bytes = new String(topic);
-    utf65535bytes = new String(topic, 0, MAX_TOPIC_LEN);
+    badTopic = new String(topic);
+    goodTopic = new String(topic, 0, MAX_TOPIC_LEN);
   }
 
 
@@ -50,8 +48,8 @@ public class MqttClientTopicValidationTest {
     testPublish("#", false, context);
     testPublish("+", false, context);
     testPublish("", false, context);
-    testPublish(utf65535bytes, true, context);
-    testPublish(utf65536bytes, false, context);
+    testPublish(goodTopic, true, context);
+    testPublish(badTopic, false, context);
   }
 
   @Test
@@ -64,11 +62,19 @@ public class MqttClientTopicValidationTest {
     testSubscribe("sport+", false, context);
     testSubscribe("sp#ort", false, context);
     testSubscribe("+/tennis#", false, context);
-    testSubscribe(utf65535bytes, true, context);
-    testSubscribe(utf65536bytes, false, context);
+    testSubscribe(goodTopic, true, context);
+    testSubscribe(badTopic, false, context);
   }
 
+  /**
+   * Execute a test of topic validation on public
+   *
+   * @param topicName topic name
+   * @param mustBeValid if it should be valid or not
+   * @param context
+   */
   public void testPublish(String topicName, boolean mustBeValid, TestContext context) {
+
     log.info(String.format("test publishing in \"%s\" topic", topicName));
     Async async = context.async(2);
     MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
@@ -98,6 +104,7 @@ public class MqttClientTopicValidationTest {
   }
 
   public void testSubscribe(String topicFilter, boolean mustBeValid, TestContext context) {
+
     log.info(String.format("test subscribing for \"%s\" topic", topicFilter));
 
     Async async = context.async(2);
