@@ -81,7 +81,9 @@ public class MqttClientSubscribeTest {
   private void subscribeAndReceive(TestContext context, MqttQoS qos) {
 
     Async async = context.async();
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+    MqttClient client = MqttClient.create(Vertx.vertx(),
+      new MqttClientOptions()
+        .setHost(TestUtil.BROKER_ADDRESS));
 
     client.publishHandler(publish -> {
         assertTrue(publish.qosLevel() == qos);
@@ -111,7 +113,9 @@ public class MqttClientSubscribeTest {
     this.messageId = 0;
 
     Async async = context.async();
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+    MqttClient client = MqttClient.create(Vertx.vertx(),
+      new MqttClientOptions()
+        .setHost(TestUtil.BROKER_ADDRESS));
 
     client.subscribeCompleteHandler(suback -> {
       assertTrue(suback.messageId() == messageId);

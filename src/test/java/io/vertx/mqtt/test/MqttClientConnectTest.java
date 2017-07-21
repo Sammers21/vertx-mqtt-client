@@ -25,6 +25,11 @@ import io.vertx.mqtt.MqttClientOptions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Properties;
+
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -35,9 +40,11 @@ public class MqttClientConnectTest {
 
   @Test
   public void connectDisconnect(TestContext context) throws InterruptedException {
-
     Async async = context.async();
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+    MqttClient client = MqttClient.create(Vertx.vertx(),
+      new MqttClientOptions()
+        .setHost(TestUtil.BROKER_ADDRESS)
+    );
 
     client.connect(c -> {
 

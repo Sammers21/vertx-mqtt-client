@@ -51,6 +51,7 @@ public class MqttClientPingTest  {
     Async async = context.async();
     MqttClientOptions options = new MqttClientOptions();
     options.setAutoKeepAlive(false);
+    options.setHost(TestUtil.BROKER_ADDRESS);
 
     log.info("Manual ping ... " + PING_NUMBER + " times timeout " + KEEPALIVE_TIMEOUT);
 
@@ -86,6 +87,7 @@ public class MqttClientPingTest  {
     Async async = context.async();
     MqttClientOptions options = new MqttClientOptions();
     options.setKeepAliveTimeSeconds(KEEPALIVE_TIMEOUT);
+    options.setHost(TestUtil.BROKER_ADDRESS);
 
     log.info("Auto ping ... " + PING_NUMBER + " times timeout " + KEEPALIVE_TIMEOUT);
 
