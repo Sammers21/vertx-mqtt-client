@@ -46,7 +46,6 @@ public class MqttClientPublishTest {
   private int messageId = 0;
 
   @Test
-  @Ignore
   public void publishQoS2(TestContext context) throws InterruptedException {
     this.publish(context, MqttQoS.EXACTLY_ONCE);
   }

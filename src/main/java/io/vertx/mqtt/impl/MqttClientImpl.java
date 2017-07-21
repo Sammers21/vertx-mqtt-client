@@ -80,14 +80,14 @@ public class MqttClientImpl implements MqttClient {
   // handler to call when a pingresp is received
   Handler<Void> pingrespHandler;
 
-  // storage of PUBLISH QoS=1 messages which was not responded with PUBACK
+  // queue of PUBLISH QoS=1 messages which was not responded with PUBACK
   Queue<MqttMessage> qos1outbound = new ConcurrentLinkedQueue<>();
 
-  // storage of PUBLISH QoS=2 messages which was not responded with PUBREC
+  // queue of PUBLISH QoS=2 messages which was not responded with PUBREC
   // and PUBREL messages which was not responded with PUBCOMP
   Queue<MqttMessage> qos2outbound = new ConcurrentLinkedQueue<>();
 
-  // storage of PUBREC messages which was not responded with PUBREL
+  // queue of PUBREC messages which was not responded with PUBREL
   Queue<MqttMessage> qos2inbound = new ConcurrentLinkedQueue<>();
 
 
