@@ -101,7 +101,7 @@ public class MqttClientImpl implements MqttClient {
   /**
    * Constructor
    *
-   * @param vertx Vert.x instance
+   * @param vertx   Vert.x instance
    * @param options MQTT client options
    */
   public MqttClientImpl(Vertx vertx, MqttClientOptions options) {
@@ -480,8 +480,13 @@ public class MqttClientImpl implements MqttClient {
 
     io.netty.handler.codec.mqtt.MqttMessage pubrec = MqttMessageFactory.newMessage(fixedHeader, variableHeader, null);
 
-    this.write(pubrec);
+    // if server retries to sending of PUBLISH packet we should repeat PUBREC
+    if (((MqttPublishVariableHeader) qos2inbound.peek().variableHeader()).messageId() == publishMessageId) {
+      qos2inbound.poll();
+    }
     qos2inbound.add(pubrec);
+
+    this.write(pubrec);
   }
 
   /**
@@ -603,7 +608,7 @@ public class MqttClientImpl implements MqttClient {
   void handlePuback(int pubackMessageId) {
 
     synchronized (this.connection) {
-     if (((MqttPublishVariableHeader) qos1outbound.peek().variableHeader()).messageId() == pubackMessageId) {
+      if (((MqttPublishVariableHeader) qos1outbound.peek().variableHeader()).messageId() == pubackMessageId) {
         qos1outbound.poll();
 
         if (this.publishCompleteHandler != null) {
@@ -716,7 +721,7 @@ public class MqttClientImpl implements MqttClient {
   /**
    * Used for calling the connect handler when the server replies to the request
    *
-   * @param msg  connection response message
+   * @param msg connection response message
    */
   void handleConnack(MqttConnAckMessage msg) {
 
@@ -749,7 +754,7 @@ public class MqttClientImpl implements MqttClient {
    * @return true - valid, otherwise - false
    */
   private boolean isValidTopicName(String topicName) {
-    if(!isValidStringSizeInUTF8(topicName)){
+    if (!isValidStringSizeInUTF8(topicName)) {
       return false;
     }
 
@@ -764,7 +769,7 @@ public class MqttClientImpl implements MqttClient {
    * @return true - valid, otherwise - false
    */
   private boolean isValidTopicFilter(String topicFilter) {
-    if(!isValidStringSizeInUTF8(topicFilter)){
+    if (!isValidStringSizeInUTF8(topicFilter)) {
       return false;
     }
 
