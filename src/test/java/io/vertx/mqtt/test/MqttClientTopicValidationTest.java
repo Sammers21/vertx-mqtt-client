@@ -77,7 +77,8 @@ public class MqttClientTopicValidationTest {
 
     log.info(String.format("test publishing in \"%s\" topic", topicName));
     Async async = context.async(2);
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+    MqttClient client = MqttClient.create(Vertx.vertx(),
+      new MqttClientOptions().setHost(TestUtil.BROKER_ADDRESS));
 
     client.connect(c -> {
       Assert.assertTrue(c.succeeded());
@@ -108,7 +109,8 @@ public class MqttClientTopicValidationTest {
     log.info(String.format("test subscribing for \"%s\" topic", topicFilter));
 
     Async async = context.async(2);
-    MqttClient client = MqttClient.create(Vertx.vertx(), new MqttClientOptions());
+    MqttClient client = MqttClient.create(Vertx.vertx(),
+      new MqttClientOptions().setHost(TestUtil.BROKER_ADDRESS));
 
     client.connect(c -> {
       Assert.assertTrue(c.succeeded());
