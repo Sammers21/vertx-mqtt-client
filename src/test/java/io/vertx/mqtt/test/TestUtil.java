@@ -41,7 +41,7 @@ class TestUtil {
       properties.load(inputStream);
       log.debug("Properties was loaded successfully");
     } catch (IOException e) {
-      log.error("Properties was not loaded, it should be generated during mvn verify -P", e);
+      log.error("Properties was not loaded, it should be generated during mvn verify -Plocal_test", e);
     }
 
     BROKER_ADDRESS = properties.getProperty("SERVER");
