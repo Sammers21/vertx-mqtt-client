@@ -74,6 +74,7 @@ public class MqttClientIdTest {
 
     MqttClientOptions options = new MqttClientOptions();
     options.setClientId("myClient");
+    options.setHost(TestUtil.BROKER_ADDRESS);
     MqttClient client = MqttClient.create(Vertx.vertx(), options);
 
     client.connect(c -> {
