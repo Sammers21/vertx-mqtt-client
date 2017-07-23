@@ -519,7 +519,7 @@ public class MqttClientImpl implements MqttClient {
 
     // add into pipeline netty's (en/de)coder
     pipeline.addBefore("handler", "mqttEncoder", MqttEncoder.INSTANCE);
-    pipeline.addBefore("handler", "mqttDecoder", new MqttDecoder());
+    pipeline.addBefore("handler", "mqttDecoder", new MqttDecoder(268_435_455));
 
     if (this.options.isAutoKeepAlive() &&
       this.options.getKeepAliveTimeSeconds() != 0) {
